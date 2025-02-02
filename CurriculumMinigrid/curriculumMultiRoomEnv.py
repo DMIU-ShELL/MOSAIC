@@ -273,64 +273,64 @@ class CurriculumMultiRoomEnv(MiniGridEnv):
         return True
     
 
-from gym.envs.registration import register, registry
-def register_custom_multiroom_curriculum():
-    register(
-        id='CurriculumMultiRoomEnv-R2-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":2},
-    )
+from gym.envs.registration import register
 
-    register(
-        id='CurriculumMultiRoomEnv-R3-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":3},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R2-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":2},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R4-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":4},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R3-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":3},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R5-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":5},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R4-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":4},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R6-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":6},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R5-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":5},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R7-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":7},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R6-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":6},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R8-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":8},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R7-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":7},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R9-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":9},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R8-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":8},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R10-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":10},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R9-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":9},
+)
 
-    register(
-        id='CurriculumMultiRoomEnv-R11-v0',
-        entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
-        kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":11},
-    )
+register(
+    id='CurriculumMultiRoomEnv-R10-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":10},
+)
+
+register(
+    id='CurriculumMultiRoomEnv-R11-v0',
+    entry_point='CurriculumMinigrid.curriculumMultiRoomEnv:CurriculumMultiRoomEnv',
+    kwargs={"minNumRooms":2, "maxNumRooms":10, "maxRoomSize":4, "targetNumRooms":11},
+)

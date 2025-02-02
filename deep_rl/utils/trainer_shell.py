@@ -39,7 +39,7 @@ from memory_profiler import profile
 import csv
 
 
-def _shell_itr_log(logger, agent, agent_idx, itr_counter, task_counter, dict_logs):
+def _shell_itr_log(logger, agent, agent_idx, itr_counter, task_counter, dict_logs, mask_interval):
     logger.info(Fore.BLUE + 'agent %d, task %d / iteration %d, total steps %d, ' \
     'mean/max/min reward %f/%f/%f' % (agent_idx, task_counter, \
         itr_counter,
@@ -103,6 +103,8 @@ def _shell_itr_log(logger, agent, agent_idx, itr_counter, task_counter, dict_log
         logger.scalar_summary('{0}debug_extended/{1}_std'.format(prefix, key), np.std(value))
         logger.scalar_summary('{0}debug_extended/{1}_max'.format(prefix, key), np.max(value))
         logger.scalar_summary('{0}debug_extended/{1}_min'.format(prefix, key), np.min(value))
+
+    logger.scalar_summary('{0}communication_interval/'.format(prefix), mask_interval)
 
     return
 
@@ -828,7 +830,10 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         ###############################################################################
         ### Query for knowledge using communication process. Send label/embedding to the communication module to query for relevant knowledge from other peers.
         if dict_to_query is not None:
-            print(dict_logs)
+            print('Entropy:', np.mean(dict_logs['entropy']))
+            print('Reward:', np.mean(agent.iteration_rewards))
+            mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards)
+
             if shell_iterations % mask_interval == 0:
                 # Approach 2: At this point consolidate masks and then we can reset beta parameters. Then we can get new masks from network and combine.
                 dict_to_query['shell_iteration'] = shell_iterations
@@ -1012,7 +1017,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         ###############################################################################
         ### Logs metrics to tensorboard log file and updates the embedding, reward pair in this cycle for a particular task.
         if shell_iterations % agent.config.iteration_log_interval == 0:
-            itr_log_fn(logger, agent, agent_id, shell_iterations, shell_task_counter, dict_logs)
+            itr_log_fn(logger, agent, agent_id, shell_iterations, shell_task_counter, dict_logs, mask_interval)
                 
             # Save agent model
             agent.save(agent.config.log_dir + '/%s-%s-model-%s.bin' % (agent.config.agent_name, agent.config.tag, agent.task.name))
@@ -1728,3 +1733,34 @@ def run_detect_module_experimental(agent):
     distances = [emb_dist, m_dist1, m_dist2, cos_sim, density, emd, wasserstein_distance]
 
     return task_change_detected, new_embedding, ground_truth_task_label, distances, emb_bool, agent_seen_tasks
+
+
+def adaptive_communication_interval(policy_entropy, recent_returns, lambda_base=20, alpha=4, beta=10):
+    """
+    Dynamically adjusts the communication interval based on policy entropy and return change.
+
+    - High entropy (H) => frequent communication (low interval)
+    - Large return improvement (Δr) => allows more communication
+    - Low entropy & stable returns => longer intervals (less communication)
+    
+    Args:
+        policy_entropy (float): Current policy entropy (0 to 1).
+        recent_returns (list): List of recent episodic returns.
+        lambda_base (int): Base interval factor (higher = less frequent communication).
+        alpha (float): Scaling factor for entropy decay.
+        beta (float): Scaling factor for return influence.
+
+    Returns:
+        int: Adjusted communication interval.
+    """
+
+    # Compute return difference (Δr), default to large value if not enough history
+    delta_r = (recent_returns[-1] - recent_returns[-2]) if len(recent_returns) > 1 else 1.0
+
+    # Ensure delta_r is non-negative for log scaling
+    delta_r = max(delta_r, 1e-6)
+
+    # Compute adaptive communication interval
+    comm_interval = lambda_base * np.exp(-alpha * policy_entropy) + beta * np.log(1 + delta_r)
+
+    return int(np.clip(comm_interval, 5, 200))

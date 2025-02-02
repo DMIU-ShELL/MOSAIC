@@ -2,8 +2,7 @@ import gym
 from PIL import Image
 from gym_minigrid.wrappers import ReseedWrapper, ImgObsWrapper, RGBImgObsWrapper
 import argparse
-from CurriculumMinigrid.curriculumMultiRoomEnv import register_custom_multiroom_curriculum
-register_custom_multiroom_curriculum()
+from CurriculumMinigrid import curriculumMultiRoomEnv
 
 # Function to convert MiniGrid environment observation to RGB image
 def minigrid_to_image(observation):
@@ -45,25 +44,6 @@ def save_minigrid_image(env_name, filename, seed):
     # Close environment
     env.close()
 
-    # Function to save MiniGrid environment as PNG image
-def save_minihack_image(env_name, filename, seed):
-    # Create MiniGrid environment
-    env = gym.make(env_name)
-    
-    # Reset environment to get initial observation
-    obs = env.reset()
-    
-    # Convert observation to RGB image
-    img = minigrid_to_image(obs)
-    
-    # Save image as PNG
-    img.save(filename)
-    
-    # Close environment
-    env.close()
-
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -74,4 +54,4 @@ if __name__ == '__main__':
     seed = 840
     for env_name in args.envs:   # Change this to the MiniGrid environment you want
         filename = 'minigrid_images/' + str(env_name) + str(seed) + '.png'      # Specify the filename for the saved image
-        save_minihack_image(env_name, filename, seed)
+        save_minigrid_image(env_name, filename, seed)

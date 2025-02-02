@@ -474,8 +474,8 @@ class MiniGrid(BaseTask):
         from gym.wrappers import TimeLimit
         import gym_minigrid
         from gym_minigrid.wrappers import ImgObsWrapper, ReseedWrapper, ActionBonus, StateBonus
-        from CurriculumMinigrid.curriculumMultiRoomEnv import register_custom_multiroom_curriculum
-        register_custom_multiroom_curriculum()  # Registers custom curriculum multi room envs (10 tasks of 2 to 11 rooms)
+        import CurriculumMinigrid
+        
         self.wrappers_dict = {'ActionBonus': ActionBonus, 'StateBonus': StateBonus}
         with open(env_config_path, 'r') as f:
             env_config = json.load(f)
@@ -692,10 +692,13 @@ class CompoSuite(BaseTask):
         if done or truncated:
             state = self.reset()
             done = done or truncated
+        info['success'] = info.pop('Success')
+        info['success'] = reward
+
         return state, reward, done, info
     
     def reset(self):
-        state, done = self.env.reset()
+        state, info = self.env.reset()
         return state
     
     def reset_task(self, taskinfo):
@@ -728,6 +731,8 @@ class CompoSuiteFlatObs(CompoSuite):
             state = self.reset()
             done = done or truncated
 
+        info['success'] = info.pop('Success')
+        info['success'] = reward
 
         return state.ravel(), reward, done, info
     
@@ -834,7 +839,7 @@ class Robosuite(BaseTask):
             # Check if the object is above a certain height
             obj_height = self.env.sim.data.body_xpos[self.env.obj_body_id][2]
             success_threshold = 0.2  # Adjust this threshold as needed
-            info['Success'] = obj_height > success_threshold
+            info['success'] = obj_height > success_threshold
 
         if done or truncated:
             state = self.reset()
@@ -894,6 +899,7 @@ class MiniHack(BaseTask):
         import minihack
         import gym
         from nle import nethack
+        import CurriculumMinigrid
         self.name = name
         with open(env_config_path, 'r') as f:
             env_config = json.load(f)
