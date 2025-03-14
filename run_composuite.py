@@ -25,9 +25,9 @@ from deep_rl.utils.logger import get_logger
 from deep_rl.utils.trainer_shell import trainer_learner, trainer_evaluator
 from deep_rl.component.policy import SamplePolicy
 from deep_rl.component.task import ParallelizedTask, MiniGridFlatObs, MetaCTgraphFlatObs, ContinualWorld, MiniGrid, MetaCTgraph, CompoSuite, CompoSuiteFlatObs, MiniHack 
-from deep_rl.network.network_heads import CategoricalActorCriticNet_SS, GaussianActorCriticNet_SS, CategoricalActorCriticNet_SS_Comp, GaussianActorCriticNet_SS_Comp, GaussianActorCriticNet_SS_Comp_FixedStd
-from deep_rl.network.network_bodies import FCBody_SS, DummyBody_CL, FCBody_SS_Comp
-from deep_rl.agent.PPO_agent import PPODetectShell, PPOShellAgent
+from deep_rl.network.network_heads import CategoricalActorCriticNet_SS, GaussianActorCriticNet_SS, CategoricalActorCriticNet_SS_Comp, GaussianActorCriticNet_SS_Comp, GaussianActorCriticNet_SS_Comp_FixedStd, GaussianActorCriticNet_FixedStd
+from deep_rl.network.network_bodies import FCBody_SS, DummyBody_CL, FCBody_SS_Comp, FCBody_Baseline
+from deep_rl.agent.PPO_agent import PPODetectShell, PPOShellAgent, PPOBaselineAgent
 from deep_rl.agent.SAC_agent import SACDetectShell, SACShellAgent
 
 from deep_rl.shell_modules.communication.comms import ParallelComm, ParallelCommEval, ParallelCommOmniscient
@@ -42,14 +42,14 @@ import random
 def global_config(config, name):
     config.env_name = name
     config.env_config_path = None
-    config.lr = 0.0001
+    config.lr = 1e-4
     config.cl_preservation = 'supermask'
     config.seed = None
     config.backbone_seed = 9157
     config.log_dir = None
     config.logger = None 
     config.num_workers = 1
-    config.optimizer_fn = lambda params, lr: torch.optim.RMSprop(params, lr=lr)
+    config.optimizer_fn = lambda params, lr: torch.optim.Adam(params, lr=lr)
 
     config.policy_fn = SamplePolicy
     #config.state_normalizer = RescaleNormalizer(1./10.)
@@ -57,14 +57,18 @@ def global_config(config, name):
     config.reward_normalizer = DummyNormalizer() #RewardRunningStatsNormalizer()
     config.discount = 0.99
     config.use_gae = True
-    config.gae_tau = 0.99
-    config.entropy_weight = 0.01 #0.75
+    config.gae_tau = 0.95
+    config.entropy_weight = 0.0 #0.75
     config.rollout_length = 16000
-    config.optimization_epochs = 8
-    config.num_mini_batches = 128
+
+    config.optimization_epochs = 128
+    config.num_mini_batches = None
+    config.use_full_batch = True        # This will use full batch instead of mini batching
+    config.target_kl = 0.02
+
     config.ppo_ratio_clip = 0.2
     config.iteration_log_interval = 1
-    config.gradient_clip = 5
+    config.gradient_clip = 0.5
     config.max_steps = 12800000
     config.evaluation_episodes = 1#50
     config.cl_requires_task_label = True
@@ -260,12 +264,12 @@ def composuite_ppo(name, args, shell_config):
     config.eval_task_fn = eval_task_fn
 
     # Network lambda function
-    config.network_fn = lambda state_dim, action_dim, label_dim: GaussianActorCriticNet_SS_Comp_FixedStd(\
+    '''config.network_fn = lambda state_dim, action_dim, label_dim: GaussianActorCriticNet_SS_Comp_FixedStd(\
         state_dim, action_dim, label_dim,
         phi_body=DummyBody_CL(state_dim, task_label_dim=label_dim),
         actor_body=FCBody_SS_Comp(
             state_dim,
-            hidden_units=(128, 128),
+            hidden_units=(64, 64),
             discrete_mask=False,
             gate=torch.tanh,
             num_tasks=config.cl_num_tasks,
@@ -274,16 +278,30 @@ def composuite_ppo(name, args, shell_config):
             ),
         critic_body=FCBody_SS_Comp(
             state_dim,
-            hidden_units=(128,128),
+            hidden_units=(64, 64),
             discrete_mask=False,
             gate=torch.tanh,
             num_tasks=config.cl_num_tasks,
             new_task_mask=args.new_task_mask,
             seed=config.seed
-        ),
+            ),
         num_tasks=config.cl_num_tasks,
         new_task_mask=args.new_task_mask,
-        seed=config.seed)    # 'random' for mask RI. 'linear_comb' for mask LC.
+        seed=config.seed)    # 'random' for mask RI. 'linear_comb' for mask LC.'''
+    
+    config.network_fn = lambda state_dim, action_dim, label_dim: GaussianActorCriticNet_FixedStd(\
+        state_dim, action_dim, label_dim,
+        phi_body=DummyBody_CL(state_dim, task_label_dim=label_dim),
+        actor_body=FCBody_Baseline(
+            state_dim,
+            hidden_units=(64, 64),
+            gate=torch.tanh
+            ),
+        critic_body=FCBody_Baseline(
+            state_dim,
+            hidden_units=(64, 64),
+            gate=torch.tanh
+            ))    # 'random' for mask RI. 'linear_comb' for mask LC.
     
     # Environment sepcific setup ends.
     ###############################################################################

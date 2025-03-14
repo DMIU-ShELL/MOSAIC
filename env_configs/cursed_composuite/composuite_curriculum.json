@@ -1,15 +1,21 @@
 {
     "tasks": [
-        ["IIWA", "Box", "None", "Push"],
-        ["IIWA", "Box", "None", "PickPlace"],
-        ["IIWA", "Box", "ObjectWall", "PickPlace"]
+        ["IIWA", "Box", "None", "Reach"],
+        ["IIWA", "Box", "None", "Grasp"],
+        ["IIWA", "Box", "None", "Lift"],
+        ["IIWA", "Box", "None", "Approach"],
+        ["IIWA", "Box", "None", "Lower"],
+        ["IIWA", "Box", "None", "PickPlace"]
     ],
     "one_hot": true,
-    "label_dim": 3,
+    "label_dim": 6,
     "action_dim": 8,
     "seeds": [
-        840, 
-        841,
-        842
+        840,
+        840,
+        840,
+        840,
+        840,
+        840
     ]
 }

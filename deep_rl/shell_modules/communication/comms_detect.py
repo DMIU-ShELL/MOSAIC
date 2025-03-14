@@ -811,10 +811,10 @@ class ParallelCommDetect(object):
                     self.log_data(meta_copy, '/metadata.csv')  # Add this line to log metadata
 
                     # Extract and normalize similarities, then update metadata dictionaries
-                    sender_similarity_values = torch.tensor([d['sender_similarity'] for d in meta_copy])
-                    normalized_values = normalize(sender_similarity_values)
-                    for i, d in enumerate(meta_copy):
-                        d['sender_similarity'] = normalized_values[i].item()
+                    #sender_similarity_values = torch.tensor([d['sender_similarity'] for d in meta_copy])
+                    #normalized_values = normalize(sender_similarity_values)
+                    #for i, d in enumerate(meta_copy):
+                    #    d['sender_similarity'] = normalized_values[i].item()
 
                     # Log sorted normalized metadata at each point in time
                     self.log_data(meta_copy, '/normalized_metadata.csv')  # Add this line to log metadata

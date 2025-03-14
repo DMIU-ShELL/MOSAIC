@@ -212,6 +212,7 @@ class PPOContinualLearnerAgent(BaseContinualLearnerAgent):
             # used to compute average across all episodes that may occur in an iteration
             self.running_episodes_success_rate = [[] for _ in range(config.num_workers)]
             self.iteration_success_rate = np.zeros(config.num_workers)
+            print('')
         else:
             self._rollout_fn = self._rollout_normal
             self.episode_success_rate = None
@@ -269,32 +270,25 @@ class PPOContinualLearnerAgent(BaseContinualLearnerAgent):
         entropy_log = []
         ratio_log = []
 
-        batcher = Batcher(states.size(0) // config.num_mini_batches, [np.arange(states.size(0))])
-        for _ in range(config.optimization_epochs):
-            batcher.shuffle()
-            while not batcher.end():
-                batch_indices = batcher.next_batch()[0]
-                batch_indices = tensor(batch_indices).long()
-                sampled_states = states[batch_indices]
-                sampled_actions = actions[batch_indices]
-                sampled_log_probs_old = log_probs_old[batch_indices]
-                sampled_returns = returns[batch_indices]
-                sampled_advantages = advantages[batch_indices]
+        if config.use_full_batch:
+            print('Using full batch')
+            for _ in range(config.optimization_epochs):
+                _, _, log_probs, entropy_loss, values, outs = self.network.predict(states, actions)
 
-                _, _, log_probs, entropy_loss, values, outs = self.network.predict(
-                    sampled_states,
-                    sampled_actions,
-                    return_layer_output=True
-                )
-
-                ratio = (log_probs - sampled_log_probs_old).exp()
-                obj = ratio * sampled_advantages
-                obj_clipped = ratio.clamp(1.0 - self.config.ppo_ratio_clip,
-                                          1.0 + self.config.ppo_ratio_clip) * sampled_advantages
+                ratio = (log_probs - log_probs_old).exp()
+                obj = ratio * advantages
+                obj_clipped = ratio.clamp(1.0 - config.ppo_ratio_clip, 1.0 + config.ppo_ratio_clip) * advantages
                 
-                # Compute losses
+                # Compute policy loss
                 policy_loss = -torch.min(obj, obj_clipped).mean(0) - config.entropy_weight * entropy_loss.mean()
-                value_loss = 0.5 * (sampled_returns - values).pow(2).mean()
+                
+                # Compute value loss
+                value_loss = 0.5 * (returns - values).pow(2).mean()
+
+                # Compute KL divergence for early stopping
+                approx_kl = (log_probs_old - log_probs).mean().item()
+                if approx_kl > 1.5 * config.target_kl:
+                    break  # Stop training if KL exceeds threshold
 
                 # Logging
                 log_probs_log.append(log_probs.detach().cpu().numpy().mean())
@@ -309,8 +303,52 @@ class PPOContinualLearnerAgent(BaseContinualLearnerAgent):
                 grad_norm_log.append(norm_.detach().cpu().numpy())
                 self.opt.step()
 
+        # PPO with mini batching
+        else:
+            print('Using mini batching')
+            batcher = Batcher(states.size(0) // config.num_mini_batches, [np.arange(states.size(0))])
+            for _ in range(config.optimization_epochs):
+                batcher.shuffle()
+                while not batcher.end():
+                    batch_indices = batcher.next_batch()[0]
+                    batch_indices = tensor(batch_indices).long()
+                    sampled_states = states[batch_indices]
+                    sampled_actions = actions[batch_indices]
+                    sampled_log_probs_old = log_probs_old[batch_indices]
+                    sampled_returns = returns[batch_indices]
+                    sampled_advantages = advantages[batch_indices]
+
+                    _, _, log_probs, entropy_loss, values, outs = self.network.predict(
+                        sampled_states,
+                        sampled_actions,
+                        return_layer_output=True
+                    )
+
+                    ratio = (log_probs - sampled_log_probs_old).exp()
+                    obj = ratio * sampled_advantages
+                    obj_clipped = ratio.clamp(1.0 - self.config.ppo_ratio_clip,
+                                            1.0 + self.config.ppo_ratio_clip) * sampled_advantages
+                    
+                    # Compute losses
+                    policy_loss = -torch.min(obj, obj_clipped).mean(0) - config.entropy_weight * entropy_loss.mean()
+                    value_loss = 0.5 * (sampled_returns - values).pow(2).mean()
+
+                    # Logging
+                    log_probs_log.append(log_probs.detach().cpu().numpy().mean())
+                    entropy_log.append(entropy_loss.detach().cpu().numpy().mean())
+                    ratio_log.append(ratio.detach().cpu().numpy().mean())
+                    policy_loss_log.append(policy_loss.detach().cpu().numpy())
+                    value_loss_log.append(value_loss.detach().cpu().numpy())
+
+                    self.opt.zero_grad()
+                    (policy_loss + value_loss).backward()
+                    norm_ = nn.utils.clip_grad_norm_(self.network.parameters(), config.gradient_clip)
+                    grad_norm_log.append(norm_.detach().cpu().numpy())
+                    self.opt.step()
+
         #self.config.logger.info(f'----------------------- Optimization epochs complete in {time.time() - start_time} seconds -----------------------\n')
 
+        # Update total steps
         steps = config.rollout_length * config.num_workers
         self.total_steps += steps
         self.layers_output = outs
@@ -389,7 +427,7 @@ class PPOContinualLearnerAgent(BaseContinualLearnerAgent):
             next_states = config.state_normalizer(next_states)
 
             # save data to buffer for the detect module
-            self.data_buffer.feed_batch([states, actions, rewards, terminals, next_states])
+            self.data_buffer.feed_batch([states, actions.cpu(), rewards, terminals, next_states])
 
             rollout.append([states, values.detach(), actions.detach(), log_probs.detach(), \
                 rewards, 1 - terminals])
@@ -1110,6 +1148,23 @@ class PPODetectShell(PPOShellAgent):
 
     ###############################################################################
     # Methods for detect module
+    '''def extract_sar(self):
+        buffer_data = self.data_buffer.sample()
+        
+        for i, tpl in enumerate(buffer_data):
+            print(f"Sample {i}:")
+            print(f"  Observation type: {type(tpl[0])}")  # Should be np.array or tensor
+            print(f"  Action type: {type(tpl[1])}")  # Should be tensor or np.array
+            print(f"  Reward type: {type(tpl[2])}")  # Should be float, np.array, or tensor
+            
+            # Check if tensors are on CUDA
+            if isinstance(tpl[1], torch.Tensor):
+                print(f"  Action device: {tpl[1].device}")  # Should be 'cpu' or 'cuda'
+            if isinstance(tpl[2], torch.Tensor):
+                print(f"  Reward device: {tpl[2].device}")
+
+        return None  # Temporarily return None to test output'''
+    
     def extract_sar(self):
         buffer_data = self.data_buffer.sample()
         
@@ -1117,7 +1172,7 @@ class PPODetectShell(PPOShellAgent):
         for tpl in buffer_data:
             tmp0 = tpl[:3]                                              # Get the obs, action, reward
             tmp1 = np.array(tmp0[1])                                    # Convert action tensor to np.array
-            tmp1 = tmp1.reshape(1,)                                     # Reshape data to one axis? Not sure what this is for.. maybe for multiple workers?
+            tmp1 = tmp1.reshape(self.task.action_dim,)                                     # Reshape data to one axis? Not sure what this is for.. maybe for multiple workers?
             tmp2 = np.array(tmp0[2])                                    # Convert reward to np.array
             tmp2 = tmp2.reshape(1,)                                     # Also reshape
             tmp3 = np.concatenate([tmp0[0].ravel(), tmp1, tmp2])        # Concatenate together obs, action, reward as sar_data

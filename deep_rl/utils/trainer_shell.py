@@ -109,7 +109,7 @@ def _shell_itr_log(logger, agent, agent_idx, itr_counter, task_counter, dict_log
     return
 
 # metaworld/continualworld
-def _shell_itr_log_mw(logger, agent, agent_idx, itr_counter, task_counter, dict_logs):
+def _shell_itr_log_mw(logger, agent, agent_idx, itr_counter, task_counter, dict_logs, mask_interval):
     logger.info(Fore.BLUE + 'agent %d, task %d / iteration %d, total steps %d, ' \
     'mean/max/min reward %f/%f/%f, mean/max/min success rate %f/%f/%f' % (agent_idx, \
         task_counter,
@@ -172,6 +172,8 @@ def _shell_itr_log_mw(logger, agent, agent_idx, itr_counter, task_counter, dict_
         logger.scalar_summary('{0}debug_extended/{1}_std'.format(prefix, key), np.std(value))
         logger.scalar_summary('{0}debug_extended/{1}_max'.format(prefix, key), np.max(value))
         logger.scalar_summary('{0}debug_extended/{1}_min'.format(prefix, key), np.min(value))
+
+    logger.scalar_summary('{0}communication_interval/'.format(prefix), mask_interval)
 
     return
 
@@ -830,8 +832,8 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         ###############################################################################
         ### Query for knowledge using communication process. Send label/embedding to the communication module to query for relevant knowledge from other peers.
         if dict_to_query is not None:
-            print('Entropy:', np.mean(dict_logs['entropy']))
-            print('Reward:', np.mean(agent.iteration_rewards))
+            #print('Entropy:', np.mean(dict_logs['entropy']))
+            #print('Reward:', np.mean(agent.iteration_rewards))
             mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards)
 
             if shell_iterations % mask_interval == 0:

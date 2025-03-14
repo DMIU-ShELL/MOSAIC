@@ -141,8 +141,10 @@ class ActorCriticNet(nn.Module):
         self.phi_body = phi_body
         self.actor_body = actor_body
         self.critic_body = critic_body
-        self.fc_action = layer_init(nn.Linear(actor_body.feature_dim, action_dim), 1e-3)
-        self.fc_critic = layer_init(nn.Linear(critic_body.feature_dim, 1), 1e-3)
+        #self.fc_action = layer_init(nn.Linear(actor_body.feature_dim, action_dim), 1e-3)
+        #self.fc_critic = layer_init(nn.Linear(critic_body.feature_dim, 1), 1e-3)
+        self.fc_action = nn.Linear(actor_body.feature_dim, action_dim)
+        self.fc_critic = nn.Linear(critic_body.feature_dim, 1)
 
         self.actor_params = list(self.actor_body.parameters()) + list(self.fc_action.parameters())
         self.critic_params = list(self.critic_body.parameters()) + list(self.fc_critic.parameters())
@@ -422,15 +424,14 @@ class GaussianActorCriticNet_SS_Comp_FixedStd(nn.Module):
         v = self.network.fc_critic(phi_v)
 
         # Separate fixed log_std for joint and gripper actions
-        log_std_joint = 0.0 * torch.ones(mean[:, :7].shape, device=mean.device)  # log(σ) = 0 for joints
+        log_std_joint = 0.0* torch.ones(mean[:, :7].shape, device=mean.device)
         log_std_gripper = -0.5 * torch.ones(mean[:, 7:].shape, device=mean.device)  # log(σ) = -0.5 for gripper
-
         # Combine joint and gripper log_std
         log_std = torch.cat((log_std_joint, log_std_gripper), dim=1)
 
         # Clamp log_std within bounds
-        log_std = torch.clamp(log_std, GaussianActorCriticNet_SS_Comp_FixedStd.LOG_STD_MIN,
-                            GaussianActorCriticNet_SS_Comp_FixedStd.LOG_STD_MAX)
+        #log_std = torch.clamp(log_std, GaussianActorCriticNet_SS_Comp_FixedStd.LOG_STD_MIN,
+        #                    GaussianActorCriticNet_SS_Comp_FixedStd.LOG_STD_MAX)
         std = torch.exp(log_std)
 
         dist = torch.distributions.Normal(mean, std)
@@ -447,6 +448,65 @@ class GaussianActorCriticNet_SS_Comp_FixedStd(nn.Module):
         entropy = entropy.sum(-1).unsqueeze(-1)
         
         return mean, action, log_prob, entropy, v, layers_output
+
+
+class GaussianActorCriticNet_FixedStd(nn.Module, BaseNet):
+    LOG_STD_MIN = -0.6931  # -20.
+    LOG_STD_MAX = 0.4055  # 1.3
+    
+    def __init__(self,
+                 state_dim,
+                 action_dim,
+                 task_label_dim=None,
+                 phi_body=None,
+                 actor_body=None,
+                 critic_body=None):
+        super(GaussianActorCriticNet_FixedStd, self).__init__()
+        
+        self.network = ActorCriticNet(state_dim, action_dim, phi_body, actor_body, critic_body)
+        self.task_label_dim = task_label_dim
+        
+        # Remove masking and replace with fixed log stdlog_std_values = torch.zeros(action_dim, dtype=torch.float32)
+        log_std_values = torch.zeros(action_dim, dtype=torch.float32)
+        log_std_values[-1] = -0.5  # Gripper has lower variance
+        self.fixed_log_std = nn.Parameter(log_std_values, requires_grad=False)
+        self.to(Config.DEVICE)
+
+    def predict(self, obs, action=None, return_layer_output=False, to_numpy=False):
+        obs = tensor(obs)
+        layers_output = []
+        phi, out = self.network.phi_body(obs, return_layer_output, 'network.phi_body')
+        layers_output += out
+        phi_a, out = self.network.actor_body(phi, None, return_layer_output, 'network.actor_body')
+        layers_output += out
+        phi_v, out = self.network.critic_body(phi, None, return_layer_output, 'network.critic_body')
+        layers_output += out
+        
+        #mean = torch.nn.functional.tanh(self.network.fc_action(phi_a))
+        mean = self.network.fc_action(phi_a)
+        if to_numpy:
+            return mean.cpu().detach().numpy()
+        v = self.network.fc_critic(phi_v)
+        
+        # Use fixed standard deviation from CompoSuite
+        std = torch.exp(self.fixed_log_std)
+        dist = torch.distributions.Normal(mean, std)
+        
+        if action is None:
+            action = dist.sample()
+        
+        if return_layer_output:
+            layers_output += [('policy_mean', mean), ('policy_std', std), 
+                              ('policy_action', action), ('value_fn', v)]
+        
+        log_prob = dist.log_prob(action)
+        log_prob = torch.sum(log_prob, dim=1, keepdim=True)
+        entropy = dist.entropy()
+        entropy = entropy.sum(-1).unsqueeze(-1)
+        
+        return mean, action, log_prob, entropy, v, layers_output
+
+
 
 # actor-critic net for continual learning where tasks are labelled
 class GaussianActorCriticNet_CL(nn.Module, BaseNet):

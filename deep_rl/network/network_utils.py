@@ -16,8 +16,8 @@ class BaseNet:
         pass
 
 
-'''# fp16 computation
-def layer_init(layer, w_scale=1.0):
+# fp16 computation
+'''def layer_init(layer, w_scale=1.0):
     nn.init.orthogonal_(layer.weight.data)
     layer.weight.data = layer.weight.data.to(torch.float16).mul_(w_scale)#layer.weight.data.mul_(w_scale)
     nn.init.constant_(layer.bias.data, 0)

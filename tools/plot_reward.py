@@ -1715,85 +1715,67 @@ mypaths17 = {
 }
 
 
-# CTGRAPH ACI TESTS
-mypathsaci = {
-    'C3L' : {
-        'Dist 1 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T0/',
-        'Dist 1 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T1/',
-        'Dist 1 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T2/',
-        'Dist 1 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T3/',
-        'Dist 1 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T4/',
-        'Dist 1 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T5/',
-        'Dist 1 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T6/',
-
-        'Dist 2 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T10/',
-        'Dist 2 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T11/',
-        'Dist 2 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T12/',
-        'Dist 2 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T13/',
-        'Dist 2 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T14/',
-        'Dist 2 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T15/',
-        'Dist 2 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T16/',
+# Minihack 22 tasks
+mypathsminihack22 = {
+    'C4L' : {
+        'N2-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T0/',
+        'N3-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T1/',
+        'N4-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T2/',
+        'N5-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T3/',
+        'N6-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T4/',
         
-        'Dist 3 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T20/',
-        'Dist 3 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T21/',
-        'Dist 3 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T22/',
-        'Dist 3 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T23/',
-        'Dist 3 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T24/',
-        'Dist 3 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T25/',
-        'Dist 3 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm/T26/',
-    },
-
-    'C3L ACI' : {
-        'Dist 1 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T0/',
-        'Dist 1 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T1/',
-        'Dist 1 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T2/',
-        'Dist 1 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T3/',
-        'Dist 1 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T4/',
-        'Dist 1 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T5/',
-        'Dist 1 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T6/',
-
-        'Dist 2 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T10/',
-        'Dist 2 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T11/',
-        'Dist 2 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T12/',
-        'Dist 2 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T13/',
-        'Dist 2 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T14/',
-        'Dist 2 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T15/',
-        'Dist 2 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T16/',
+        'N4-S5' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T5/',
+        'N5-S7' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T6/',
         
-        'Dist 3 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T20/',
-        'Dist 3 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T21/',
-        'Dist 3 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T22/',
-        'Dist 3 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T23/',
-        'Dist 3 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T24/',
-        'Dist 3 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T25/',
-        'Dist 3 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/fullcomm_aci/T26/',
+        'N4-S10' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T7/',
+        'N5-S10' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T8/',
+        'N6-S10' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T9/',
+        
+        'N2-Locked' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T10/',
+        'N2-Lava' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T11/',
+        'N2-Monster' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T12/',
+        'N2-Extreme' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T13/',
+        
+        'N4-Locked' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T14/',
+        'N4-Lava' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T15/',
+        'N4-Monster' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T16/',
+        'N4-Extreme' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T17/',
+        
+        'N6-Locked' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T18/',
+        'N6-Lava' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T19/',
+        'N6-Monster' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T20/',
+        'N6-Extreme' : 'AAAI_EXPERIMENTS/minihack_22_tasks/fullcomm/T21/',
     },
 
     'No comm' : {
-        'Dist 1 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T0/',
-        'Dist 1 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T1/',
-        'Dist 1 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T2/',
-        'Dist 1 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T3/',
-        'Dist 1 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T4/',
-        'Dist 1 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T5/',
-        'Dist 1 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T6/',
-
-        'Dist 2 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T10/',
-        'Dist 2 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T11/',
-        'Dist 2 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T12/',
-        'Dist 2 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T13/',
-        'Dist 2 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T14/',
-        'Dist 2 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T15/',
-        'Dist 2 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T16/',
+        'N2-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T0/',
+        'N3-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T1/',
+        'N4-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T2/',
+        'N5-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T3/',
+        'N6-S4' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T4/',
         
-        'Dist 3 Level 2' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T20/',
-        'Dist 3 Level 3' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T21/',
-        'Dist 3 Level 4' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T22/',
-        'Dist 3 Level 5' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T23/',
-        'Dist 3 Level 6' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T24/',
-        'Dist 3 Level 7' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T25/',
-        'Dist 3 Level 8' : 'AAAI_EXPERIMENTS/ctgraph_aci_test/nocomm/T26/',
-    }
+        'N4-S5' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T5/',
+        'N5-S7' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T6/',
+        
+        'N4-S10' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T7/',
+        'N5-S10' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T8/',
+        'N6-S10' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T9/',
+        
+        'N2-Locked' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T10/',
+        'N2-Lava' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T11/',
+        'N2-Monster' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T12/',
+        'N2-Extreme' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T13/',
+        
+        'N4-Locked' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T14/',
+        'N4-Lava' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T15/',
+        'N4-Monster' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T16/',
+        'N4-Extreme' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T17/',
+        
+        'N6-Locked' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T18/',
+        'N6-Lava' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T19/',
+        'N6-Monster' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T20/',
+        'N6-Extreme' : 'AAAI_EXPERIMENTS/minihack_22_tasks/nocomm/T21/',
+    },
 }
 
 
@@ -1809,7 +1791,7 @@ if __name__ == '__main__':
     #MYPATHS = mypaths10
     #MYPATHS = mypaths15
     #MYPATHS = mypaths11
-    MYPATHS = mypathsaci
+    MYPATHS = mypathsminihack22
 
     fig2 = plt.figure(figsize=(30, 6))
     ax2 = fig2.subplots()
