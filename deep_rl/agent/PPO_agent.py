@@ -864,6 +864,7 @@ class PPODetectShell(PPOShellAgent):
         # this will allow us to use the seen_tasks dictionary across our entire parallelised system.
         self.seen_tasks = config.seen_tasks
         self.current_task_key = 0
+        self.continuous = config.continuous
 
         # BIRCH online clustering
         #self.threshold = 1
@@ -1303,11 +1304,18 @@ class PPODetectShell(PPOShellAgent):
             self.current_task_emb = (old_emb + new_emb) / 2   # Compute moving average.
 
             # Update dictionary at current_task_key. Ideally we would have used a pointer to get this done but unfortunately we can't do so for mp.Manager() dictionaries because it is a proxy.
-            self.update_seen_tasks(
-                embedding = self.current_task_emb,
-                reward = np.mean(self.iteration_rewards),
-                label = self.task.get_task()['task_label']
-            )
+            if self.continuous == True:
+                self.update_seen_tasks(
+                    embedding = self.current_task_emb,
+                    reward = np.mean(self.iteration_success_rate),
+                    label = self.task.get_task()['task_label']
+                )
+            else:
+                self.update_seen_tasks(
+                    embedding = self.current_task_emb,
+                    reward = np.mean(self.iteration_rewards),
+                    label = self.task.get_task()['task_label']
+                )
 
             task_change_bool = False
 

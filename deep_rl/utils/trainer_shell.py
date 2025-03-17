@@ -834,7 +834,10 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         if dict_to_query is not None:
             #print('Entropy:', np.mean(dict_logs['entropy']))
             #print('Reward:', np.mean(agent.iteration_rewards))
-            mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards)
+            if agent.config.continuous == True:
+                mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_success_rate)
+            else:
+                mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards)
 
             if shell_iterations % mask_interval == 0:
                 # Approach 2: At this point consolidate masks and then we can reset beta parameters. Then we can get new masks from network and combine.

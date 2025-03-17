@@ -392,13 +392,12 @@ class GaussianActorCriticNet_SS_Comp_FixedStd(nn.Module):
         discrete_mask = False
         
         # Initialize the Actor-Critic Network
-        self.network = ActorCriticNetSSComp(state_dim, action_dim, phi_body, actor_body, critic_body,
-                                             num_tasks, new_task_mask, discrete_mask=discrete_mask, seed=seed)
+        self.network = ActorCriticNetSSComp(state_dim, action_dim, phi_body, actor_body, critic_body, num_tasks, new_task_mask, discrete_mask=discrete_mask, seed=seed)
         self.task_label_dim = task_label_dim
-        
-        # Remove the fc_log_std layer since we are fixing log std
-        # self.network.fc_log_std = CompBLC_MultitaskMaskLinear(...)
 
+        log_std_values = torch.zeros(action_dim, dtype=torch.float32)
+        log_std_values[-1] = -0.5  # Gripper has lower variance
+        self.fixed_log_std = nn.Parameter(log_std_values, requires_grad=False)
         self.to(Config.DEVICE)  # Move the model to the appropriate device
 
     def predict(self, obs, action=None, task_label=None, return_layer_output=False, to_numpy=False):
@@ -409,32 +408,21 @@ class GaussianActorCriticNet_SS_Comp_FixedStd(nn.Module):
         layers_output = []
         phi, out = self.network.phi_body(obs, task_label, return_layer_output, 'network.phi_body')
         layers_output += out
-        
         phi_a, out = self.network.actor_body(phi, None, return_layer_output, 'network.actor_body')
         layers_output += out
-        
         phi_v, out = self.network.critic_body(phi, None, return_layer_output, 'network.critic_body')
         layers_output += out
         
         mean = self.network.fc_action(phi_a)
-
         if to_numpy:
             return mean.cpu().detach().numpy()
 
         v = self.network.fc_critic(phi_v)
 
-        # Separate fixed log_std for joint and gripper actions
-        log_std_joint = 0.0* torch.ones(mean[:, :7].shape, device=mean.device)
-        log_std_gripper = -0.5 * torch.ones(mean[:, 7:].shape, device=mean.device)  # log(σ) = -0.5 for gripper
-        # Combine joint and gripper log_std
-        log_std = torch.cat((log_std_joint, log_std_gripper), dim=1)
-
-        # Clamp log_std within bounds
-        #log_std = torch.clamp(log_std, GaussianActorCriticNet_SS_Comp_FixedStd.LOG_STD_MIN,
-        #                    GaussianActorCriticNet_SS_Comp_FixedStd.LOG_STD_MAX)
-        std = torch.exp(log_std)
-
+        # Use fixed standard deviation from Composuites
+        std = torch.exp(self.fixed_log_std)
         dist = torch.distributions.Normal(mean, std)
+
         if action is None:
             action = dist.sample()
         

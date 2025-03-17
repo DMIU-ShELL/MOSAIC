@@ -229,7 +229,7 @@ def detect_finalise_and_run(config, Agent):
             config = config
         )
         # Start training
-        trainer_learner(agent, comm, args.curriculum_id, config.manager, config.querying_frequency, config.mode)
+        trainer_learner(agent, comm, args.curriculum_id, config.manager, config.querying_frequency, config)
         
 
 
@@ -255,6 +255,8 @@ def composuite_ppo(name, args, shell_config):
     ###############################################################################
     # ENVIRONMENT SPECIFIC SETUP. SETUP TRAINING AND EVALUATION TASK FUNCTIONS
     # AND THE NETWORK FUNCTION.
+    config.continuous = True
+
     # Training task lambda function
     task_fn = lambda log_dir: CompoSuiteFlatObs(name=name, env_config_path=env_config_path, log_dir=log_dir)
     config.task_fn = lambda: ParallelizedTask(task_fn,config.num_workers,log_dir=config.log_dir, single_process=True)
@@ -264,7 +266,7 @@ def composuite_ppo(name, args, shell_config):
     config.eval_task_fn = eval_task_fn
 
     # Network lambda function
-    '''config.network_fn = lambda state_dim, action_dim, label_dim: GaussianActorCriticNet_SS_Comp_FixedStd(\
+    config.network_fn = lambda state_dim, action_dim, label_dim: GaussianActorCriticNet_SS_Comp_FixedStd(\
         state_dim, action_dim, label_dim,
         phi_body=DummyBody_CL(state_dim, task_label_dim=label_dim),
         actor_body=FCBody_SS_Comp(
@@ -275,7 +277,7 @@ def composuite_ppo(name, args, shell_config):
             num_tasks=config.cl_num_tasks,
             new_task_mask=args.new_task_mask,
             seed=config.seed
-            ),
+        ),
         critic_body=FCBody_SS_Comp(
             state_dim,
             hidden_units=(64, 64),
@@ -284,24 +286,10 @@ def composuite_ppo(name, args, shell_config):
             num_tasks=config.cl_num_tasks,
             new_task_mask=args.new_task_mask,
             seed=config.seed
-            ),
+        ),
         num_tasks=config.cl_num_tasks,
         new_task_mask=args.new_task_mask,
-        seed=config.seed)    # 'random' for mask RI. 'linear_comb' for mask LC.'''
-    
-    config.network_fn = lambda state_dim, action_dim, label_dim: GaussianActorCriticNet_FixedStd(\
-        state_dim, action_dim, label_dim,
-        phi_body=DummyBody_CL(state_dim, task_label_dim=label_dim),
-        actor_body=FCBody_Baseline(
-            state_dim,
-            hidden_units=(64, 64),
-            gate=torch.tanh
-            ),
-        critic_body=FCBody_Baseline(
-            state_dim,
-            hidden_units=(64, 64),
-            gate=torch.tanh
-            ))    # 'random' for mask RI. 'linear_comb' for mask LC.
+        seed=config.seed)    # 'random' for mask RI. 'linear_comb' for mask LC.
     
     # Environment sepcific setup ends.
     ###############################################################################

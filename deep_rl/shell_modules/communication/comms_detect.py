@@ -528,38 +528,6 @@ class ParallelCommDetect(object):
 
             return ret, msg_type
         
-        def calculate_weighted_similarity(embedding1, embedding2, alpha=0.5, percentile=95):
-            #self.logger.info(f'{embedding1}\n{embedding2}')
-            embedding1_np = np.expand_dims(np.array(embedding1), (0))
-            embedding2_np = np.expand_dims(np.array(embedding2), (0))
-            
-            cosine_sim_matrix = F.cosine_similarity(embedding1, embedding2.unsqueeze(0))
-            #self.logger.info(f'{cosine_sim_matrix}')
-            cosine_sim_matrix = (cosine_sim_matrix + 1) / 2
-            #self.logger.info(f'{cosine_sim_matrix}')
-
-            euclidean_distances = cdist(embedding1_np, embedding2_np, metric='euclidean')
-            #self.logger.info(f'{euclidean_distances}')
-
-            combined_embeddings = np.vstack([embedding1_np, embedding2_np])
-            D_max = np.linalg.norm(embedding2) + 1e-8#np.percentile(pdist(combined_embeddings, metric='euclidean'), percentile)
-            #self.logger.info(f'{combined_embeddings}')
-            #self.logger.info(f"{pdist(combined_embeddings, metric='euclidean')}")
-            #self.logger.info(f'{D_max}')
-
-            euclidean_sim_matrix = 1 - (euclidean_distances / D_max)
-            #self.logger.info(f'{euclidean_sim_matrix}')
-            #euclidean_sim_matrix = np.clip(euclidean_sim_matrix, 0, 1)
-            #self.logger.info(f'{euclidean_sim_matrix}')
-
-            weighted_similarity_matrix = alpha * cosine_sim_matrix + (1 - alpha) * euclidean_sim_matrix
-            #self.logger.info(f'{alpha * cosine_sim_matrix}')
-            #self.logger.info(f'{1-alpha}')
-            #self.logger.info(f'{(1-alpha) * euclidean_sim_matrix}')
-            #self.logger.info(f'{weighted_similarity_matrix}')
-
-            return weighted_similarity_matrix
-        
         # NOTE: When we eventually apply to lifelong learning, we will need to modify the communication module so that
         # agents send all metadata to the querying agent, so that the querying agent can acquire information using it's
         # own method. This way the agent gets all the best information overall rather than just the best information
@@ -613,51 +581,6 @@ class ParallelCommDetect(object):
                 similarities = F.cosine_similarity(embeddings, target_embedding.unsqueeze(0))
                 self.logger.info(Fore.LIGHTGREEN_EX + f'SIMILARITIES: {similarities}, {type(similarities)}')
 
-
-                #euclidean_distance = torch.norm(embeddings - target_embedding.unsqueeze(0), dim=1)      # euclidean distance between embeddings
-                #l2_norm = torch.abs(torch.norm(embeddings, dim=1) - torch.norm(target_embedding))       # L2 norm (magnitude) between embeddings
-                #wasserstein_distance = torch.tensor([wd(e.numpy(), target_embedding.numpy()) for e in embeddings])  # Wasserstein distance between embeddings
-                #mahalanobis_distance = torch.sqrt(((embeddings - target_embedding.unsqueeze(0)) @ torch.inverse(torch.tensor([[1, 0.5, 0.2], [0.5, 1, 0.3], [0.2, 0.3, 1]], dtype=torch.float32)) * embeddings - target_embedding.unsqueeze(0)).sum(dim=1))
-
-
-                """def normalize(tensor):
-                    min_val = tensor.min()
-                    max_val = tensor.max()
-
-                    if max_val == min_val:
-                        return torch.full_like(tensor, 1)
-                    return min_val + (tensor - min_val) / (max_val - min_val) * (1 - min_val)
-
-                def normalize1(tensor):
-                    min_val = tensor.min()
-                    max_val = tensor.max()
-                    
-                    if max_val == min_val:
-                        return torch.full_like(tensor, 1)
-                    return (tensor - min_val) / (max_val - min_val)
-                
-                def normalize2(tensor):
-                    min_val = tensor.min()
-                    max_val = tensor.max()
-                    
-                    if max_val == min_val:
-                        return torch.full_like(tensor, 1)
-                    return 1 - (tensor - min_val) / (max_val - min_val)"""
-                
-
-                def normalize(tensor):
-                    min_val = tensor.min()
-                    max_val = tensor.max()
-
-                    if max_val == min_val:
-                        return tensor # return the original tensor if there is only 1 value or many of the same value. #torch.full_like(tensor, 0)  # All values will be 0 if min_val == max_val
-                    return (tensor - min_val) / (max_val - min_val) * max_val
-                
-                #print(similarities)
-                #similarities = normalize(similarities)
-
-                #print(similarities)
-                
                 # Find the index of the closest entry
                 closest_index = torch.argmax(similarities).item()
 
@@ -811,10 +734,10 @@ class ParallelCommDetect(object):
                     self.log_data(meta_copy, '/metadata.csv')  # Add this line to log metadata
 
                     # Extract and normalize similarities, then update metadata dictionaries
-                    #sender_similarity_values = torch.tensor([d['sender_similarity'] for d in meta_copy])
-                    #normalized_values = normalize(sender_similarity_values)
-                    #for i, d in enumerate(meta_copy):
-                    #    d['sender_similarity'] = normalized_values[i].item()
+                    sender_similarity_values = torch.tensor([d['sender_similarity'] for d in meta_copy])
+                    normalized_values = normalize(sender_similarity_values)
+                    for i, d in enumerate(meta_copy):
+                        d['sender_similarity'] = normalized_values[i].item()
 
                     # Log sorted normalized metadata at each point in time
                     self.log_data(meta_copy, '/normalized_metadata.csv')  # Add this line to log metadata
@@ -838,7 +761,7 @@ class ParallelCommDetect(object):
                         # We want to know that the information we select is actually useful so the reward needs to be relatively high
                         # We want the knowledge that we use to also improve as we improve so we scale it with our own reward
                         if (sender_dist >= cosine_similarity_threshold) or self.no_similarity:      # similarity condition
-                            if (self.current_task_reward < sender_rw) or self.no_reward:            # reward condition
+                            #if (self.current_task_reward < sender_rw) or self.no_reward:            # reward condition
                                 # Create a new dictionary for each request
                                 data = {
                                     'req_address': sender_address,

@@ -299,6 +299,7 @@ def generate_beta_heatmaps(root_dir, interval):
                 # Set up timesteps of interest around each communication cycle
                 communication_interval = interval  # Communication cycles occur every 20 timesteps
                 timesteps_of_interest = []
+                
                 for t in range(communication_interval, len(df), communication_interval):
                     # Filter out-of-bounds indices from timesteps_of_interest
                     timesteps_of_interest.extend([t - 1, t, t + 1])

@@ -100,6 +100,7 @@ class Config:
         #self.cl_learn_task_label = True
         self.eval_interval = None
         self.use_task_label = True
+        self.continuous = False
 
     def add_argument(self, *args, **kwargs):
         self.parser.add_argument(*args, **kwargs)
