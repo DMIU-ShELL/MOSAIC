@@ -60,7 +60,7 @@
     ],
     "env": {
         "env_name": "ctgraph",
-        "env_config_path": "./env_configs/cursed_ctgraph/meta_ctgraph_ctwtf_half.json"
+        "env_config_path": "./env_configs/ctgraph/meta_ctgraph_ctwtf_half.json"
     
     }
 }

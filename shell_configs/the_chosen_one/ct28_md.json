@@ -68,7 +68,7 @@
     ],
     "env": {
         "env_name": "ctgraph",
-        "env_config_path": "./env_configs/cursed_ctgraph/seed1/meta_ctgraph_ctwtf.json"
+        "env_config_path": "./env_configs/ctgraph/seed1/meta_ctgraph_ctwtf.json"
     
     }
 }

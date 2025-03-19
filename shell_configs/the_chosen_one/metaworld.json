@@ -105,6 +105,6 @@
     ],
     "env": {
         "env_name": "continualworld",
-        "env_config_path": "./env_configs/cursed_metaworld/metaworld_curriculum.json"
+        "env_config_path": "./env_configs/metaworld/metaworld_curriculum.json"
     }
 }

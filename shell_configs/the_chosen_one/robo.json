@@ -105,6 +105,6 @@
     ],
     "env": {
         "env_name": "robosuite",
-        "env_config_path": "./env_configs/cursed_robosuite/robosuite_curriculum.json"
+        "env_config_path": "./env_configs/robosuite/robosuite_curriculum.json"
     }
 }

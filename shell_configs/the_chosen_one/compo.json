@@ -105,6 +105,6 @@
     ],
     "env": {
         "env_name": "composuite",
-        "env_config_path": "./env_configs/cursed_composuite/composuite_curriculum.json"
+        "env_config_path": "./env_configs/composuite/composuite_curriculum.json"
     }
 }

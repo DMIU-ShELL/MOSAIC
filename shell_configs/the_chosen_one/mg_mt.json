@@ -105,6 +105,6 @@
     ],
     "env": {
         "env_name": "minigrid",
-        "env_config_path": "./env_configs/cursed_minigrid/minigrid_mt.json"
+        "env_config_path": "./env_configs/minigrid/minigrid_mt.json"
     }
 }

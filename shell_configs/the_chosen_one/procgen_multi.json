@@ -50,6 +50,6 @@
     ],
     "env": {
         "env_name": "procgen",
-        "env_config_path": "./env_configs/cursed_procgen/procgen.json"
+        "env_config_path": "./env_configs/procgen/procgen.json"
     }
 }

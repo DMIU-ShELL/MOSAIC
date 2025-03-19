@@ -189,6 +189,6 @@
     ],
     "env": {
         "env_name": "minihack",
-        "env_config_path": "./env_configs/cursed_minihack/minihack_curriculum_room.json"
+        "env_config_path": "./env_configs/minihack/minihack_curriculum_room.json"
     }
 }

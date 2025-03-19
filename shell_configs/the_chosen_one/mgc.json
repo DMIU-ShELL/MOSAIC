@@ -74,6 +74,6 @@
     ],
     "env": {
         "env_name": "minigrid",
-        "env_config_path": "./env_configs/cursed_minigrid/minigrid_curriculum.json"
+        "env_config_path": "./env_configs/minigrid/minigrid_curriculum.json"
     }
 }
