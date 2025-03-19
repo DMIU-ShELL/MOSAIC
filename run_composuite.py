@@ -166,9 +166,6 @@ def detect_finalise_and_run(config, Agent):
     agent = Agent(config)
     config.agent_name = agent.__class__.__name__ + '_{0}'.format(args.curriculum_id)
 
-    # Communication frequency. TODO: This will need a rework if we don't know the length of task encounters.
-    config.querying_frequency = 10#(config.max_steps[0]/(config.rollout_length * config.num_workers)) / args.comm_interval
-
 
     ###############################################################################
     # Read the reference ip-port pairs to enter a collective. Setup the parallelised
@@ -186,18 +183,6 @@ def detect_finalise_and_run(config, Agent):
     #if GLOBAL_mode.value:
     #    comm = ParallelCommOmniscient(agent.get_task_emb_size(), agent.model_mask_dim, config, zip(addresses, ports), GLOBAL_task_record, GLOBAL_manager, args.localhost, GLOBAL_mode, args.dropout, config.emb_dist_threshold) #Chris added threshold
     #    trainer_learner(agent, comm, args.curriculum_id, GLOBAL_manager, GLOBAL_task_record, config.querying_frequency, GLOBAL_mode)
-
-
-    # Comm hyperparameters
-    config.query_wait = 0.3 # ms
-    config.mask_wait = 0.3  # ms
-    config.top_n = 14 # get top 5 masks for collective linear comb
-    #config.reward_progression_factor = 0.6 # x * self.current_task_reward < sender_rw @send_mask_requests() # NOTE: NOT USED ANYMORE
-    #config.reward_stability_threshold = 0.6 # Reward threshold at which point we don't want the agent to query anymore for stability
-
-    # Flags for ablation studies
-    config.no_similarity = False
-    config.no_reward = False
 
     # Log all system hyperparameters and settings to log directory
     config.log_hyperparameters(config.logger.log_dir + '/parameters.txt')
@@ -254,7 +239,22 @@ def composuite_ppo(name, args, shell_config):
     ###############################################################################
     # ENVIRONMENT SPECIFIC SETUP. SETUP TRAINING AND EVALUATION TASK FUNCTIONS
     # AND THE NETWORK FUNCTION.
-    config.continuous = True
+    config.continuous = True        # Enable success rate instead of reward
+
+    # Communication frequency
+    config.querying_frequency = 10
+
+    # Comm hyperparameters
+    config.query_wait = 0.3 # ms
+    config.mask_wait = 0.3  # ms
+    config.top_n = 14 # get top 5 masks for collective linear comb
+    #config.reward_progression_factor = 0.6 # x * self.current_task_reward < sender_rw @send_mask_requests() # NOTE: NOT USED ANYMORE
+    #config.reward_stability_threshold = 0.6 # Reward threshold at which point we don't want the agent to query anymore for stability
+
+    # Flags for ablation studies
+    config.no_similarity = False
+    config.no_reward = False
+
 
     # Training task lambda function
     task_fn = lambda log_dir: CompoSuiteFlatObs(name=name, env_config_path=env_config_path, log_dir=log_dir)

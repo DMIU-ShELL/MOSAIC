@@ -428,6 +428,9 @@ commands_composuite = [
 
     # MIG 6 (0-12)
     ['MIG-76cd8dd7-7703-5581-8ac5-a7ee81a402a0', "python run_composuite.py 5 29505 -l -d 0.0 --exp_id='comp_agent6'"],
+
+
+    ['MIG-76cd8dd7-7703-5581-8ac5-a7ee81a402a0', "python run_composuite.py 13 29513 -l -d 0.0 --exp_id='comp_agent6'"],
 ]
 
 '''commands_composuite = [
