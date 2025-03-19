@@ -1322,7 +1322,10 @@ class PPODetectShell(PPOShellAgent):
         # IF NEW TASK
         else:
             self.task_train_end_emb()                       # End training on previous task mask.
-            self.task_train_start_emb(new_emb, np.mean(self.iteration_rewards))      # np.mean(self.iteration_rewards) was giving           # Start training on new mask for the newly detected task
+            if self.continuous == True:
+                self.task_train_start_emb(new_emb, np.mean(self.iteration_success_rate))      # np.mean(self.iteration_rewards) was giving           # Start training on new mask for the newly detected task
+            else:
+                self.task_train_start_emb(new_emb, np.mean(self.iteration_rewards))
             self.current_task_emb = new_emb                 # Set the current task embedding to the first one produced for the new task
             task_change_bool = True
 

@@ -761,7 +761,7 @@ class ParallelCommDetect(object):
                         # We want to know that the information we select is actually useful so the reward needs to be relatively high
                         # We want the knowledge that we use to also improve as we improve so we scale it with our own reward
                         if (sender_dist >= cosine_similarity_threshold) or self.no_similarity:      # similarity condition
-                            #if (self.current_task_reward < sender_rw) or self.no_reward:            # reward condition
+                            if (self.current_task_reward < sender_rw) or self.no_reward:            # reward condition
                                 # Create a new dictionary for each request
                                 data = {
                                     'req_address': sender_address,

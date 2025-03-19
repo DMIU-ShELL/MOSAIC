@@ -410,7 +410,7 @@ commands_procgen = [
     #['MIG-187573d8-7df7-5e5f-87b2-c8b8f73c54e7', "python run_composuite.py 2 39512 -l -d 0.0 --exp_id='comp_agent13' -r reference_eval.csv"]
 ]'''
 
-'''commands_composuite = [
+commands_composuite = [
     # MIG 1 (0-7)
     ['MIG-c3ce33ce-ced8-5961-bb87-2b40eb100277', "python run_composuite.py 0 29500 -l -d 0.0 --exp_id='comp_agent1'"],
 
@@ -428,9 +428,9 @@ commands_procgen = [
 
     # MIG 6 (0-12)
     ['MIG-76cd8dd7-7703-5581-8ac5-a7ee81a402a0', "python run_composuite.py 5 29505 -l -d 0.0 --exp_id='comp_agent6'"],
-]'''
+]
 
-commands_composuite = [
+'''commands_composuite = [
     # MIG 1 (0-7)
     ['MIG-2d5b6364-fc42-587b-97c6-ee316a82e2f3', "python run_composuite.py 0 39500 -l -d 0.0 --exp_id='comp_agent1'"],
 
@@ -448,7 +448,7 @@ commands_composuite = [
 
     # MIG 6 (0-12)
     ['MIG-187573d8-7df7-5e5f-87b2-c8b8f73c54e7', "python run_composuite.py 5 39505 -l -d 0.0 --exp_id='comp_agent6'"],
-]
+]'''
 
 
 

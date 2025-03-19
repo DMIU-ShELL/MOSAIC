@@ -645,7 +645,10 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
 
     # NOTE: ADDED detect.add_embedding() to accomodate the WEIGHTED AVG COSINE SIM
     agent.current_task_emb = torch.zeros(agent.get_task_emb_size())
-    agent.task_train_start_emb(task_embedding=agent.current_task_emb, current_reward=agent.iteration_rewards)   # TODO: There is an issue with this which is that the first task will be set as zero and then the detect module with do some learning, find that the task does not match the zero embedding and start another task change. This leaves the first entry to a task change as useless. Also issues if we try to moving average this
+    if agent.config.continuous == True:
+        agent.task_train_start_emb(task_embedding=agent.current_task_emb, current_reward=agent.iteration_success_rate)   # TODO: There is an issue with this which is that the first task will be set as zero and then the detect module with do some learning, find that the task does not match the zero embedding and start another task change. This leaves the first entry to a task change as useless. Also issues if we try to moving average this
+    else:
+        agent.task_train_start_emb(task_embedding=agent.current_task_emb, current_reward=agent.iteration_rewards)
     #agent.detect.add_embedding(agent.current_task_emb, np.mean(agent.iteration_rewards))
     del states_
 
@@ -673,7 +676,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
 
 
     ###############################################################################
-    ### Comm module event handlers. These run in parallel to enable the interactions between the comm and agent.
+    '''### Comm module event handlers. These run in parallel to enable the interactions between the comm and agent.
     def mask_handler():
         """
         Handles incoming masks from other agents. Linearly combines masks and adds resulting mask to network.
@@ -742,7 +745,10 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                     # Update the network with the linearly combined mask
                     #agent.distil_task_knowledge_embedding(_masks[0])       # This will only take the first mask in the list
                     #agent.consolidate_incoming(_masks)                      # This will take all the masks in the list and linearly combine with the random/current mask
-                    agent.update_community_masks(_masks, np.mean(agent.iteration_rewards))
+                    if agent.config.continuous == True:
+                        agent.update_community_masks(_masks, np.mean(agent.iteration_success_rate))
+                    else:
+                        agent.update_community_masks(_masks, np.mean(agent.iteration_rewards))
                     _masks = []
 
                     #logger.info(Fore.WHITE + 'COMPOSED MASK ADDED TO NETWORK!')
@@ -785,7 +791,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     t_mask = mpd.Pool(processes=1)
     t_conv = mpd.Pool(processes=1)
     t_mask.apply_async(mask_handler)
-    t_conv.apply_async(conv_handler)
+    t_conv.apply_async(conv_handler)'''
     
 
     ###############################################################################
