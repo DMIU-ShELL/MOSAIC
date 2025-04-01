@@ -1,6 +1,6 @@
 import gym
 from gym_minigrid.minigrid import *
-from tools.plot_minigrid_images import minigrid_to_image, save_minigrid_image
+from plot_minigrid_images import minigrid_to_image, save_minigrid_image
 
 from PIL import Image
 from gym_minigrid.wrappers import ReseedWrapper, ImgObsWrapper, RGBImgObsWrapper

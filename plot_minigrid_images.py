@@ -51,7 +51,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Example usage:
-    seed = 840
+    seed = 13531623
     for env_name in args.envs:   # Change this to the MiniGrid environment you want
         filename = 'minigrid_images/' + str(env_name) + str(seed) + '.png'      # Specify the filename for the saved image
         save_minigrid_image(env_name, filename, seed)

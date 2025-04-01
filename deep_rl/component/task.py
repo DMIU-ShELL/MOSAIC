@@ -358,6 +358,9 @@ class MetaCTgraph(BaseTask):
             tasks = [{'name': name, 'task': np.array(task), 'task_label': None, 'env_idx': idx} \
                 for name, task in zip(names, tasks)]
             _all_tasks.append(tasks)
+
+        
+
         all_tasks = []
         if task_order == MetaCTgraph._TASK_ORDER_DEFAULT:
             for env_tasks in _all_tasks: all_tasks += env_tasks
@@ -405,6 +408,9 @@ class MetaCTgraph(BaseTask):
                 filtered_tasks.append(self.tasks[idx_])
             self.tasks_ = self.tasks
             self.tasks = filtered_tasks
+
+        for task in self.tasks:
+            print(task)
             
         # set default task
         self.set_task(self.tasks[0])
@@ -1668,6 +1674,7 @@ class ParallelizedTask:
         else:
             self.tasks = [ProcessTask(task_fn, log_dir) for _ in range(num_workers)]
         self.state_dim = self.tasks[0].state_dim
+        self.action_space = self.tasks[0].action_space
         self.action_dim = self.tasks[0].action_dim
         self.name = self.tasks[0].name
         self.single_process = single_process

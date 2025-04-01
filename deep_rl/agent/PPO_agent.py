@@ -31,6 +31,7 @@ import tensorboardX as tf
 from collections import deque
 import pandas as pd
 import time
+import gym
 
 # Base PPO agent implementations
 class PPOAgent(BaseAgent):
@@ -935,6 +936,7 @@ class PPODetectShell(PPOShellAgent):
 
         
         self.betas_log_path = self.config.logger.log_dir + '/betas.csv'
+        self.iteration_entropy = 1.0
 
 
         # Debugging outputs.
@@ -1148,82 +1150,40 @@ class PPODetectShell(PPOShellAgent):
 
 
     ###############################################################################
-    # Methods for detect module
-    '''def extract_sar(self):
-        buffer_data = self.data_buffer.sample()
-        
-        for i, tpl in enumerate(buffer_data):
-            print(f"Sample {i}:")
-            print(f"  Observation type: {type(tpl[0])}")  # Should be np.array or tensor
-            print(f"  Action type: {type(tpl[1])}")  # Should be tensor or np.array
-            print(f"  Reward type: {type(tpl[2])}")  # Should be float, np.array, or tensor
-            
-            # Check if tensors are on CUDA
-            if isinstance(tpl[1], torch.Tensor):
-                print(f"  Action device: {tpl[1].device}")  # Should be 'cpu' or 'cuda'
-            if isinstance(tpl[2], torch.Tensor):
-                print(f"  Reward device: {tpl[2].device}")
-
-        return None  # Temporarily return None to test output'''
-    
+    # Methods for detect module    
     def extract_sar(self):
-        buffer_data = self.data_buffer.sample()
-        
-        sar_data = []
-        for tpl in buffer_data:
-            tmp0 = tpl[:3]                                              # Get the obs, action, reward
-            tmp1 = np.array(tmp0[1])                                    # Convert action tensor to np.array
-            tmp1 = tmp1.reshape(self.task.action_dim,)                                     # Reshape data to one axis? Not sure what this is for.. maybe for multiple workers?
-            tmp2 = np.array(tmp0[2])                                    # Convert reward to np.array
-            tmp2 = tmp2.reshape(1,)                                     # Also reshape
-            tmp3 = np.concatenate([tmp0[0].ravel(), tmp1, tmp2])        # Concatenate together obs, action, reward as sar_data
-            sar_data.append(tmp3)
+        """Extracts (state, action, reward) tuples from the replay buffer
+        and preprocesses them for further use.
 
-        sar_data_arr = np.array(sar_data)
-
-        return sar_data_arr
-    
-    """def extract_sar(self):
-        '''Function for extracting the SAR data from the Replay
-        Buffer in order to feed the Detect Module'''
+        - Handles both discrete and continuous action spaces.
+        - Ensures consistent shapes for concatenation.
+        """
 
         buffer_data = self.data_buffer.sample()
-        #print("RB_DATA:", buffer_data[0])
-        #print(type(buffer_data[0]))
-        #print("RB_DATA_shape:", len(buffer_data))
-        sar_data = []
-        #ql = []
-        
-        for tpl in buffer_data:
-            tmp0 = tpl[:3]                                              # Get the obs, action, reward
-            tmp1 = np.array(tmp0[1])                                    # Convert action tensor to np.array
-            tmp1 = tmp1.reshape(1,)                                     # Reshape data to one axis? Not sure what this is for.. maybe for multiple workers?
-            tmp2 = np.array(tmp0[2])                                    # Convert reward to np.array
-            tmp2 = tmp2.reshape(1,)                                     # Also reshape
-            tmp3 = np.concatenate([tmp0[0].ravel(), tmp1, tmp2])        # Concatenate together obs, action, reward as sar_data
-            sar_data.append(tmp3)
-        
-        # (147,) (1,) (1,)
-        #
+        processed_data = []
 
-        '''for tpl in sar_data:
-            tmp1 = np.array(tpl[1])
-            tmp1 = tmp1.reshape(1,)
-            tmp2 = np.array(tpl[2])
-            tmp2 = tmp2.reshape(1,)
-            tmp3 = np.concatenate([tpl[0].ravel(), tmp1, tmp2])
-            ql.append(tmp3)
-        print("SAR_DATA:", sar_data[0])#sar_data[0])
-        print("SAR_DATA_SHAPE:", sar_data[0].shape)
-        print("SAR_DATA_TYPE:", type(sar_data[0]))
-        print("SAR_DATA_LENGTH:", len(sar_data))'''
-        sar_data_arr = np.array(sar_data)
-        #np.savetxt("FROM_SAR_WITH_LOVE.txt", 
-        #   sar_data_arr,
-        #   fmt='%f')
-        #print("SAR_DATA_NP_TYPE:", type(sar_data_arr))
-        #print("SAR_DATA_NP_ARR:", sar_data_arr)
-        return sar_data_arr"""
+        for state, action, reward, *_ in buffer_data:
+            # Convert state to a flattened array
+            state_array = state.ravel()
+
+            # Convert action to a NumPy array
+            action_array = np.array(action)
+
+            # Ensure correct shape for action
+            if isinstance(self.task.action_space, gym.spaces.Discrete):
+                action_array = action_array.reshape(1,)  # Convert scalar action to (1,)
+            else:
+                action_array = action_array.reshape(self.task.action_space.shape)  # Keep continuous actions in proper shape
+
+            # Convert reward to a NumPy array with shape (1,)
+            reward_array = np.array(reward).reshape(1,)
+
+            # Concatenate state, action, and reward into a single array
+            sar_entry = np.concatenate([state_array, action_array, reward_array])
+            processed_data.append(sar_entry)
+
+        # Convert the list of processed data to a NumPy array
+        return np.array(processed_data)
 
     def compute_task_embedding(self, sar_data, action_space_size):
         '''Function for computing the task embedding based on the current
@@ -1341,141 +1301,7 @@ class PPODetectShell(PPOShellAgent):
         ]
         df = pd.DataFrame(data)
         df.to_csv(self.betas_log_path, mode='a', header=not pd.io.common.file_exists(self.betas_log_path), index=False)
-    
-    
-    
-    
-    # Experimental WTE + online BIRCH clustering for task detection
-    def assign_task_emb_birch(self, new_emb):
-        old_emb = self.seen_tasks[self.current_task_key]['task_emb']
-        self.current_task_emb = (old_emb + new_emb) / 2   # Compute moving average of embedding for smoothing (Reduces cluster size)
-        
-        # Reshape the input array to have two dimensions
-        new_emb_2d = self.current_task_emb.reshape(1, -1)
-        self.birch.partial_fit(new_emb_2d)
 
-        label = self.birch.predict(new_emb_2d)
-        print('CLUSTER LABEL:', label)
-        '''with self.config.logger.tensorboard_writer.as_default():
-            tf.summary.tensor("Embedding", new_emb, step=self.iteration)
-            tf.summary.scalar("Cluster Label:", label, step=self.iteration)'''
-        print(label, label[0], self.current_cluster_label)
-
-        if label[0] == self.current_cluster_label:
-            print('TASK IS THE SAME')
-            self.update_seen_tasks(
-                embedding=new_emb,
-                reward=np.mean(self.iteration_rewards),
-                label=self.task.get_task()['task_label']
-            )
-            task_change_bool = False
-            self.current_cluster_label = label[0]
-        else:
-            print('TASK CHANGING')
-            self.task_train_end_emb()
-            self.task_train_start_emb(new_emb)
-            task_change_bool = True
-            self.current_cluster_label = label[0]
-
-        return task_change_bool
-
-    # Exerimental WTE + normalized reward weighted avg history for task detection
-    def assign_task_weighted_avg(self, new_emb):
-        task_change_bool = None
-        self.current_task_key = self._embedding_to_idx(new_emb)
-        print(f'IN ASSIGN TAKS: BEFORE AVG {self.current_task_emb}')
-        self.current_task_emb = self.detect.calculate_weighted_average()
-        print(f'IN ASSIGN TASK: {self.current_task_emb}')
-
-        print(f'IN ASSIGN TASK CURRENT EMB {self.current_task_emb}, NEW EMB {new_emb}')
-        csim = F.cosine_similarity(self.current_task_emb, new_emb, dim=0)
-
-        if self.current_task_emb is None:
-            return task_change_bool
-
-        # IF SAME TASK
-        if csim > 0.9:
-            # Update dictionary at current_task_key. Ideally we would have used a pointer to get this done but unfortunately we can't do so for mp.Manager() dictionaries because it is a proxy.
-            self.update_seen_tasks(
-                embedding = self.current_task_emb,
-                reward = np.mean(self.iteration_rewards),
-                label = self.task.get_task()['task_label']
-            )
-            task_change_bool = False
-
-        # IF NEW TASK
-        else:
-            self.task_train_end_emb()                       # End training on previous task mask.
-            self.task_train_start_emb(new_emb)              # Start training on new mask for the newly detected task
-            task_change_bool = True
-
-        return task_change_bool
-    
-    # Experimental WTE + CUSUM based task detection
-    def assign_task_emb_cusum(self, new_emb, emb_distance):
-        task_change_bool = None
-        significant_change = False
-
-
-        if len(self.distance_history) == 10:
-            mean_history = sum(self.distance_history) / len(self.distance_history)
-            diff = emb_distance - mean_history
-
-            self.distance_history.append(emb_distance)  # Append the computed distance for the current timestep
-            if len(self.distance_history) > 10: self.distance_history.popleft()     # Remove the last item
-
-            threshold = 1
-            change_points = self.cusum(self.distance_history, threshold)
-            
-            significant_change = any(diff >= threshold for change_point in change_points[0])
-            significant_change = any(diff >= threshold for change_point in change_points)
-            print(diff)
-            print(f'Change points detected: {change_points}')
-
-        else:
-            self.distance_history.append(emb_distance)  # Append the computed distance for the current timestep
-            if len(self.distance_history) > 10: self.distance_history.popleft()     # Remove the last item
-
-        print(f'New emb distance: {emb_distance}')
-        print(self.distance_history, sum(self.distance_history), len(self.distance_history))
-        
-
-        if not significant_change:
-            old_emb = self.seen_tasks[self.current_task_key]['task_emb']
-            self.current_task_emb = (old_emb + new_emb) / 2
-
-            self.update_seen_tasks(
-                embedding = self.current_task_emb,
-                reward = np.mean(self.iteration_rewards),
-                label = self.task.get_task()['task_label']
-            )
-            task_change_bool = False
-
-        else:
-            self.distance_history = [self.starter_emb]      # If we detect a new task then reset the buffer
-            self.task_train_end_emb()
-            self.task_train_start_emb(new_emb)
-            task_change_bool = True
-
-        return task_change_bool
-    
-    def cusum(self, data, threshold):
-        change_points = []
-        cumulative_sum = 0
-
-        for i in range(1, len(data)):
-            diff = data[i] - data[i-1]
-            cumulative_sum = max(0, cumulative_sum + diff - threshold)
-
-            if cumulative_sum > threshold:
-                change_points.append((i, data[i]))
-
-        
-        return change_points
-
-    def store_embeddings(self, new_embedding):
-        '''Appends new encountered task embedding to list of encountered embeddings.'''
-        self.encountered_task_embs.append(new_embedding)
 
     ###############################################################################
     # Methods for distilling incoming masks to model

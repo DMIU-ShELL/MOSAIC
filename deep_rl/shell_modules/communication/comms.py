@@ -728,16 +728,17 @@ class ParallelCommDetect(object):
                 # Time to pick the best agents
                 if len(self.metadata) > 0:
                     # Sort metadata
-                    meta_copy = sorted(self.metadata, key=lambda d: (-d['sender_similarity'], -d['sender_reward']))
+                    meta_copy = sorted(self.metadata, key=lambda d: (-d['sender_similarity'], d['sender_reward']))
+                    #meta_copy = sorted(self.metadata, key=lambda d: (d['sender_reward'], -d['sender_similarity']))
 
                     # Log sorted metadata at each point in time
                     self.log_data(meta_copy, '/metadata.csv')  # Add this line to log metadata
 
                     # Extract and normalize similarities, then update metadata dictionaries
-                    sender_similarity_values = torch.tensor([d['sender_similarity'] for d in meta_copy])
-                    normalized_values = normalize(sender_similarity_values)
-                    for i, d in enumerate(meta_copy):
-                        d['sender_similarity'] = normalized_values[i].item()
+                    #sender_similarity_values = torch.tensor([d['sender_similarity'] for d in meta_copy])
+                    #normalized_values = normalize(sender_similarity_values)
+                    #for i, d in enumerate(meta_copy):
+                    #    d['sender_similarity'] = normalized_values[i].item()
 
                     # Log sorted normalized metadata at each point in time
                     self.log_data(meta_copy, '/normalized_metadata.csv')  # Add this line to log metadata
@@ -758,6 +759,8 @@ class ParallelCommDetect(object):
                         
                         cosine_similarity_threshold = 0.5   # In the case of Wasserstein task embeddings, the cosine similarity is generally found to be in a range of [0, 1]. We use therefore use a value of 0.5.
                         
+                        score = self.current_task_reward * sender_dist
+
                         # We want to know that the information we select is actually useful so the reward needs to be relatively high
                         # We want the knowledge that we use to also improve as we improve so we scale it with our own reward
                         if (sender_dist >= cosine_similarity_threshold) or self.no_similarity:      # similarity condition

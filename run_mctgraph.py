@@ -22,16 +22,14 @@ from deep_rl.utils.torch_utils import set_one_thread, random_seed, select_device
 from deep_rl.utils.config import Config
 from deep_rl.utils.normalizer import ImageNormalizer, RescaleNormalizer, RunningStatsNormalizer, RewardRunningStatsNormalizer
 from deep_rl.utils.logger import get_logger
-from deep_rl.utils.trainer_shell import trainer_learner, trainer_evaluator
+from deep_rl.utils.trainer_shell import trainer_learner
 from deep_rl.component.policy import SamplePolicy
 from deep_rl.component.task import ParallelizedTask, MiniGridFlatObs, MetaCTgraphFlatObs, ContinualWorld
 from deep_rl.network.network_heads import CategoricalActorCriticNet_SS, GaussianActorCriticNet_SS, CategoricalActorCriticNet_SS_Comp
 from deep_rl.network.network_bodies import FCBody_SS, DummyBody_CL, FCBody_SS_Comp
 from deep_rl.agent.PPO_agent import PPODetectShell, PPOShellAgent
-from deep_rl.agent.SAC_agent import SACDetectShell, SACShellAgent
 
-from deep_rl.shell_modules.communication.comms import ParallelComm, ParallelCommEval, ParallelCommOmniscient
-from deep_rl.shell_modules.communication.comms_detect import ParallelCommDetect, ParallelCommDetectEval
+from deep_rl.shell_modules.communication.comms import ParallelCommDetect
 from deep_rl.shell_modules.detect.detect import Detect
 
 import argparse
@@ -183,47 +181,20 @@ def detect_finalise_and_run(config, Agent):
     #    trainer_learner(agent, comm, args.curriculum_id, GLOBAL_manager, GLOBAL_task_record, config.querying_frequency, GLOBAL_mode)
 
 
-    # Comm hyperparameters
-    config.query_wait = 0.3 # ms
-    config.mask_wait = 0.3  # ms
-    config.top_n = 28 # get top 5 masks for collective linear comb
-    #config.reward_progression_factor = 0.6 # x * self.current_task_reward < sender_rw @send_mask_requests() # NOTE: NOT USED ANYMORE
-    #config.reward_stability_threshold = 0.6 # Reward threshold at which point we don't want the agent to query anymore for stability
-
-    # Flags for ablation studies
-    config.no_similarity = False
-    config.no_reward = False
+    
 
     # Log all system hyperparameters and settings to log directory
     config.log_hyperparameters(config.logger.log_dir + '/parameters.txt')
 
-    if args.eval:
-        comm = ParallelCommDetectEval(
-            task_label_dim=agent.task_label_dim, 
-            mask_dim=agent.model_mask_dim, 
-            logger=config.logger, 
-            init_port=config.init_port, 
-            reference=zip(addresses, ports), 
-            knowledge_base=config.seen_tasks, 
-            manager=config.manager, 
-            localhost=args.localhost, 
-            mode=config.mode, 
-            dropout=args.dropout, 
-            threshold=config.emb_dist_threshold
-        )
-        # Start training
-        trainer_evaluator(agent, comm, args.curriculum_id, config.manager, config.seen_tasks)
-
-    else:
-        comm = ParallelCommDetect(
-            embd_dim = agent.get_task_emb_size(), 
-            mask_dim = agent.model_mask_dim, 
-            reference = zip(addresses, ports), 
-            args = args,
-            config = config
-        )
-        # Start evaluating
-        trainer_learner(agent, comm, args.curriculum_id, config.manager, config.querying_frequency, config.mode)
+    comm = ParallelCommDetect(
+        embd_dim = agent.get_task_emb_size(), 
+        mask_dim = agent.model_mask_dim, 
+        reference = zip(addresses, ports), 
+        args = args,
+        config = config
+    )
+    # Start evaluating
+    trainer_learner(agent, comm, args.curriculum_id, config.manager, config.querying_frequency, config.mode)
 
 
 '''
@@ -247,6 +218,21 @@ def mctgraph_ppo(name, args, shell_config):
     ###############################################################################
     # ENVIRONMENT SPECIFIC SETUP. SETUP TRAINING AND EVALUATION TASK FUNCTIONS
     # AND THE NETWORK FUNCTION.
+    config.continuous = False        # Enable success rate instead of reward
+
+    # Communication frequency
+    config.querying_frequency = 10
+
+    # Comm hyperparameters
+    config.query_wait = 0.3 # ms
+    config.mask_wait = 0.3  # ms
+    config.top_n = 28 # get top 5 masks for collective linear comb
+    #config.reward_progression_factor = 0.6 # x * self.current_task_reward < sender_rw @send_mask_requests() # NOTE: NOT USED ANYMORE
+    #config.reward_stability_threshold = 0.6 # Reward threshold at which point we don't want the agent to query anymore for stability
+
+    # Flags for ablation studies
+    config.no_similarity = False
+    config.no_reward = False
 
     # Training task lambda function
     task_fn = lambda log_dir: MetaCTgraphFlatObs(name, env_config_path, log_dir)
@@ -280,49 +266,6 @@ def mctgraph_ppo(name, args, shell_config):
     # Select what agent to use here. Default is DetectShell which is an L2D2-C agent that uses the
     # detect module for online task identity inference.
     detect_finalise_and_run(config, PPODetectShell)
-
-# main experiment methods. currently implemented: meta-ctgraph with ppo. TODO: Implement evaluation agents with task labels instead of embeddings
-def mctgraph_ppo_eval(name, args, shell_config):
-    # Initialise config object
-    config = Config()
-    config, env_config_path = setup_configs_and_logs(config, args, shell_config, global_config)
-
-
-    ###############################################################################
-    # ENVIRONMENT SPECIFIC SETUP. SETUP TRAINING AND EVALUATION TASK FUNCTIONS
-    # AND THE NETWORK FUNCTION.
-
-    # Training task lambda function
-    task_fn = lambda log_dir: MetaCTgraphFlatObs(name, env_config_path, log_dir)
-    config.task_fn = lambda: ParallelizedTask(task_fn,config.num_workers,log_dir=config.log_dir, single_process=True)
-
-    # Evaluation task labmda function. TODO: Is the evaluation task function necessary for a traditional learner?
-    eval_task_fn = lambda log_dir: MetaCTgraphFlatObs(name, env_config_path, log_dir)
-    config.eval_task_fn = eval_task_fn
-
-    # Network lambda function
-    config.network_fn = lambda state_dim, action_dim, label_dim: CategoricalActorCriticNet_SS_Comp(\
-        state_dim, action_dim, label_dim,
-        phi_body=FCBody_SS_Comp(
-            state_dim, 
-            task_label_dim=label_dim, 
-            hidden_units=(200, 200, 200), 
-            num_tasks=25,#config.cl_num_tasks,
-            new_task_mask='random'
-            ),
-        actor_body=DummyBody_CL(200),
-        critic_body=DummyBody_CL(200),
-        num_tasks=25,#config.cl_num_tasks,
-        new_task_mask='random')
-    
-    # Environment sepcific setup ends.
-    ###############################################################################
-    
-
-    # Select what agent to use here. Default is DetectShell which is an L2D2-C agent that uses the
-    # detect module for online task identity inference.
-    detect_finalise_and_run(config, PPOShellAgent)
-
 
 if __name__ == '__main__':
     mkdir('log')

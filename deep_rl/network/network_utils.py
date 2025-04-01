@@ -17,17 +17,27 @@ class BaseNet:
 
 
 # fp16 computation
-'''def layer_init(layer, w_scale=1.0):
-    nn.init.orthogonal_(layer.weight.data)
-    layer.weight.data = layer.weight.data.to(torch.float16).mul_(w_scale)#layer.weight.data.mul_(w_scale)
-    nn.init.constant_(layer.bias.data, 0)
-    layer.bias.data = layer.bias.data.to(torch.float16)
-    return layer'''
+#def layer_init(layer, w_scale=1.0):
+#    nn.init.orthogonal_(layer.weight.data)
+#    layer.weight.data = layer.weight.data.to(torch.float16).mul_(w_scale)#layer.weight.data.mul_(w_scale)
+#    nn.init.constant_(layer.bias.data, 0)
+#    layer.bias.data = layer.bias.data.to(torch.float16)
+#    return layer
+
+def layer_init(layer, w_scale=1.0, dtype=torch.float16):
+    with torch.no_grad():
+        nn.init_orthogonal_(layer.weight)
+        layer.weight.mul_(w_scale).to(dtype)
+        nn.init.constant_(layer.bias, 0)
+        layer.bias.to(dtype)
+
+    return layer
+    
 
 
 # fp32 computation
-def layer_init(layer, w_scale=1.0):
-    nn.init.orthogonal_(layer.weight.data)
-    layer.weight.data.mul_(w_scale)
-    nn.init.constant_(layer.bias.data, 0)
-    return layer
+#def layer_init(layer, w_scale=1.0):
+#    nn.init.orthogonal_(layer.weight.data)
+#    layer.weight.data.mul_(w_scale)
+#    nn.init.constant_(layer.bias.data, 0)
+#    return layer

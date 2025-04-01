@@ -265,7 +265,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
 
 
     ###############################################################################
-    ### Comm module event handlers. These run in parallel to enable the interactions between the comm and agent.
+    '''### Comm module event handlers. These run in parallel to enable the interactions between the comm and agent.
     def mask_handler():
         """
         Handles incoming masks from other agents. Linearly combines masks and adds resulting mask to network.
@@ -380,7 +380,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     t_mask = mpd.Pool(processes=1)
     t_conv = mpd.Pool(processes=1)
     t_mask.apply_async(mask_handler)
-    t_conv.apply_async(conv_handler)
+    t_conv.apply_async(conv_handler)'''
     
 
     ###############################################################################
@@ -429,10 +429,10 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         if dict_to_query is not None:
             #print('Entropy:', np.mean(dict_logs['entropy']))
             #print('Reward:', np.mean(agent.iteration_rewards))
-            if agent.config.continuous == True:
-                mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_success_rate)
-            else:
-                mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards)
+            #if agent.config.continuous == True:
+            #    mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_success_rate, agent.task.action_space.n)
+            #else:
+            #    mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards, agent.task.action_space.n)
 
             if shell_iterations % mask_interval == 0:
                 # Approach 2: At this point consolidate masks and then we can reset beta parameters. Then we can get new masks from network and combine.
@@ -471,6 +471,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         '''
         dict_logs = agent.iteration()
         shell_iterations += 1
+        agent.iteration_entropy = dict_logs['entropy']
 
         # Log the beta parameters for the curren task
         agent.log_betas(shell_iterations)

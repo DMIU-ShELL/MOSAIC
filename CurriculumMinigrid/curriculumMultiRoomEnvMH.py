@@ -132,6 +132,8 @@ class MiniHackMultiRoomN8S4(MiniGridHack):
             *args, env_name="Curriculum-MultiRoom-N8-S4-v0", **kwargs
         )
 
+
+
 class MiniHackMultiRoomN2S6(MiniGridHack):
     def __init__(self, *args, **kwargs):
         kwargs["max_episode_steps"] = kwargs.pop("max_episode_steps", 40)

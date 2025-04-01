@@ -101,6 +101,8 @@ class Config:
         self.eval_interval = None
         self.use_task_label = True
         self.continuous = False
+        self.use_full_batch = False
+        self.target_kl = None
 
     def add_argument(self, *args, **kwargs):
         self.parser.add_argument(*args, **kwargs)
