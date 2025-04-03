@@ -748,7 +748,7 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
         
         self.comm_masks = []
         self.num_comm_masks = len(self.comm_masks)
-        self.k = max_community_masks
+        self.k = num_tasks#max_community_masks
 
         if self.new_mask_type == NEW_MASK_LINEAR_COMB:
             self.betas = nn.Parameter(torch.zeros(num_tasks, self.k + num_tasks).type(torch.float32))
