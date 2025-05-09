@@ -252,6 +252,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     ### Logging setup (continued)
     tb_writer_emb = SummaryWriter(logger.log_dir + '/Detect_Component_Generated_Embeddings')
     _embeddings, _labels, exchanges, task_times, detect_module_activations = [], [], [], [], []
+    print(f'shell tasks: {shell_tasks}')
     task_times.append([0, shell_iterations, np.argmax(shell_tasks[0]['task_label'], axis=0), time.time()])
     detect_activations_log_path = logger.log_dir + '/detect_activations.csv'
     masks_log_path = logger.log_dir + '/exchanges.csv'
@@ -265,7 +266,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
 
 
     ###############################################################################
-    '''### Comm module event handlers. These run in parallel to enable the interactions between the comm and agent.
+    ### Comm module event handlers. These run in parallel to enable the interactions between the comm and agent.
     def mask_handler():
         """
         Handles incoming masks from other agents. Linearly combines masks and adds resulting mask to network.
@@ -380,7 +381,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     t_mask = mpd.Pool(processes=1)
     t_conv = mpd.Pool(processes=1)
     t_mask.apply_async(mask_handler)
-    t_conv.apply_async(conv_handler)'''
+    t_conv.apply_async(conv_handler)
     
 
     ###############################################################################
@@ -481,6 +482,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         ###############################################################################
         ### Run detect module. Generates embedding for SAR. Perform check to see if there has been a task change or not.
         _dist_threshold = agent.emb_dist_threshold
+        print(agent.data_buffer.size(), agent.detect.get_num_samples())
         if shell_iterations != 0 and shell_iterations % agent.detect_module_activation_frequency == 0 and agent.data_buffer.size() >= (agent.detect.get_num_samples()):
             # Run the detect module on SAR and return some logging output.
             task_change_flag, new_emb, ground_truth_task_label, dist_arr, emb_bool, agent_seen_tasks = run_detect_module(agent)

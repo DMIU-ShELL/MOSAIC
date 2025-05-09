@@ -26,11 +26,10 @@ class BaseNet:
 
 def layer_init(layer, w_scale=1.0, dtype=torch.float16):
     with torch.no_grad():
-        nn.init_orthogonal_(layer.weight)
+        torch.nn.init.orthogonal_(layer.weight)
         layer.weight.mul_(w_scale).to(dtype)
-        nn.init.constant_(layer.bias, 0)
+        torch.nn.init.constant_(layer.bias, 0)
         layer.bias.to(dtype)
-
     return layer
     
 

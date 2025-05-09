@@ -159,7 +159,7 @@ def detect_finalise_and_run(config, Agent):
     config.agent_name = agent.__class__.__name__ + '_{0}'.format(args.curriculum_id)
 
     # Communication frequency. TODO: This will need a rework if we don't know the length of task encounters.
-    config.querying_frequency = (config.max_steps[0]/(config.rollout_length * config.num_workers)) / args.comm_interval     # This comes out to how many iterations between communication cycles
+    #config.querying_frequency = (config.max_steps[0]/(config.rollout_length * config.num_workers)) / args.comm_interval     # This comes out to how many iterations between communication cycles
 
 
     ###############################################################################
@@ -226,13 +226,12 @@ def mctgraph_ppo(name, args, shell_config):
     # Comm hyperparameters
     config.query_wait = 0.3 # ms
     config.mask_wait = 0.3  # ms
-    config.top_n = 28 # get top 5 masks for collective linear comb
-    #config.reward_progression_factor = 0.6 # x * self.current_task_reward < sender_rw @send_mask_requests() # NOTE: NOT USED ANYMORE
-    #config.reward_stability_threshold = 0.6 # Reward threshold at which point we don't want the agent to query anymore for stability
+    config.top_n = 28 # set this to the number of tasks in the curriculum (we use 28 tasks in the mctgraph)
 
     # Flags for ablation studies
     config.no_similarity = False
     config.no_reward = False
+    config.no_learned_coeff = False
 
     # Training task lambda function
     task_fn = lambda log_dir: MetaCTgraphFlatObs(name, env_config_path, log_dir)
@@ -251,13 +250,15 @@ def mctgraph_ppo(name, args, shell_config):
             hidden_units=(200, 200, 200), 
             num_tasks=config.cl_num_tasks,
             new_task_mask=args.new_task_mask,           # NOTE: Set this to the max number of tasks to make the eval agent work
-            seed=config.seed
+            seed=config.seed,
+            use_naive_blc=config.no_learned_coeff
             ),
         actor_body=DummyBody_CL(200),
         critic_body=DummyBody_CL(200),
         num_tasks=config.cl_num_tasks,         # NOTE: We have to keep the num_tasks the same between the LLA and EA otherwise we have an issue with the evaluation agent using random policy actions. TODO: Figure out why this is. Could be due to some mismatch in the mask idx when mask is transfered from LLA to EA and distilled to the network.
         new_task_mask=args.new_task_mask,
-        seed=config.seed)    # 'random' for mask RI. 'linear_comb' for mask LC.
+        seed=config.seed,
+        use_naive_blc=config.no_learned_coeff)    # 'random' for mask RI. 'linear_comb' for mask LC.
     
     # Environment sepcific setup ends.
     ###############################################################################

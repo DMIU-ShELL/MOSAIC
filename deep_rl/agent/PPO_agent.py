@@ -200,7 +200,7 @@ class PPOContinualLearnerAgent(BaseContinualLearnerAgent):
         print(f'SECOND PRINT: {self.states.shape}')
         
         self.layers_output = None
-        self.data_buffer = Replay(memory_size=int(1.5*1e2), batch_size=130)
+        self.data_buffer = Replay(memory_size=int(1.5*1e2), batch_size=130) #batch_size=130
 
         self.curr_train_task_label = None
         self.curr_eval_task_label = None
@@ -1281,6 +1281,7 @@ class PPODetectShell(PPOShellAgent):
 
         # IF NEW TASK
         else:
+
             self.task_train_end_emb()                       # End training on previous task mask.
             if self.continuous == True:
                 self.task_train_start_emb(new_emb, np.mean(self.iteration_success_rate))      # np.mean(self.iteration_rewards) was giving           # Start training on new mask for the newly detected task

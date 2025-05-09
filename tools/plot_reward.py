@@ -8,6 +8,27 @@ import argparse
 from collections import OrderedDict
 from copy import deepcopy
 import seaborn as sns
+import csv
+
+def save_plot_data_to_csv(master, output_dir='./log/plots/plot_data/'):
+    os.makedirs(output_dir, exist_ok=True)
+
+    for exp_name, data in master.items():
+        filename = f"{output_dir}/{exp_name.replace(' ', '_')}_curve.csv"
+        with open(filename, mode='w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Epoch', 'MeanReturn', 'ConfidenceInterval'])
+            for x, y, cfi in zip(data['xdata'], data['ydata'], data['ydata_cfi']):
+                writer.writerow([x, y, cfi])
+
+def export_cumulative_to_csv(master, cumulative_return, cumulative_cfi, xdata, output_path='log/plots/summed_return.csv'):
+    import csv
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Epoch', 'TotalAverageReturn', 'TotalConfidenceInterval'])
+        for epoch, avg, cfi in zip(xdata, cumulative_return, cumulative_cfi):
+            writer.writerow([epoch, avg, cfi])
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -28,7 +49,7 @@ def cfi_delta(data, conf_int_param=0.95): # confidence interval
         raise ValueError('`data` with > 2 dim not expected. Expect either a 1 or 2 dimensional tensor.')
     return cfi_delta
 
-def plot(master, title='', xaxis_label='Iterations', yaxis_label='Return'):
+def plot(master, title='', xaxis_label='Epoch', yaxis_label='Return'):
     #fig = plt.figure(figsize=(25, 6))  # For wide graph
     fig = plt.figure(figsize=(30, 6))
     ax = fig.subplots()
@@ -37,7 +58,7 @@ def plot(master, title='', xaxis_label='Iterations', yaxis_label='Return'):
     ax.xaxis.label.set_fontsize(20) # Originally 30
     ax.set_ylabel(yaxis_label)
     ax.yaxis.label.set_fontsize(20) # Originally 30
-    ax.set_ylim(-0.1, 1.0)
+    ax.set_ylim(0, 1.0)
     # axis ticks
     ax.xaxis.tick_bottom()
     ax.yaxis.tick_left()
@@ -66,7 +87,7 @@ def plot(master, title='', xaxis_label='Iterations', yaxis_label='Return'):
     ax.legend(loc='lower right', prop={'size': 15}, bbox_to_anchor=(1.05, 0.0))
     return fig
 
-def plot_sum(fig, ax, master, title='', xaxis_label='Iteration', yaxis_label='Summed Return'):
+def plot_sum(fig, ax, master, title='', xaxis_label='Epoch', yaxis_label='Summed Return'):
     """
     This function creates a visualization of the cumulative return (sum of average returns) 
     across iterations for multiple experiments in the provided data structure.
@@ -88,6 +109,10 @@ def plot_sum(fig, ax, master, title='', xaxis_label='Iteration', yaxis_label='Su
     cumulative_return = np.zeros_like(master[list(master.keys())[0]]['ydata'])
     cumulative_cfi = np.zeros_like(cumulative_return)
 
+
+    # Create output directory
+    os.makedirs('./log/plots/summed_returns/', exist_ok=True)
+
     # Loop through experiments and plot individual lines with confidence interval fill
     for method_name, result_dict in master.items():
         xdata = result_dict['xdata']
@@ -103,6 +128,31 @@ def plot_sum(fig, ax, master, title='', xaxis_label='Iteration', yaxis_label='Su
         # Add current experiment's CFI to cumulative CFI (element-wise)
         cumulative_cfi += result_dict['ydata_cfi']
 
+    output_path = f'./log/plots/summed_returns/{title.replace(" ", "_")}_summed.csv'
+    with open(output_path, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Epoch', 'SummedAverageReturn'])
+        for epoch, value in zip(xdata, cumulative_return):
+            writer.writerow([epoch, value])
+        
+        writer.writerow(['max', max(cumulative_return)])
+        writer.writerow(['min', min(cumulative_return)])
+
+        # Compute milestone epochs
+        max_perf = 14
+        milestones = {
+            'first_nonzero_epoch': next((i for i, val in enumerate(cumulative_return) if val > 0), None),
+            'epoch_25_percent': next((i for i, val in enumerate(cumulative_return) if val >= 0.25 * max_perf), None),
+            'epoch_50_percent': next((i for i, val in enumerate(cumulative_return) if val >= 0.50 * max_perf), None),
+            'epoch_75_percent': next((i for i, val in enumerate(cumulative_return) if val >= 0.75 * max_perf), None),
+        }
+
+        # Append milestone data to CSV
+        writer.writerow(['first_epoch_gt_0', milestones['first_nonzero_epoch']])
+        writer.writerow(['epoch_25_percent', milestones['epoch_25_percent']])
+        writer.writerow(['epoch_50_percent', milestones['epoch_50_percent']])
+        writer.writerow(['epoch_75_percent', milestones['epoch_75_percent']])
+
     # Plot the cumulative return line
     ax.plot(xdata, cumulative_return, linewidth=3, label=title)  # Adjust color as needed
     ax.fill_between(xdata, cumulative_return - cumulative_cfi/2, cumulative_return + cumulative_cfi/2, alpha=0.2)  # Adjust color as needed
@@ -112,7 +162,7 @@ def plot_sum(fig, ax, master, title='', xaxis_label='Iteration', yaxis_label='Su
 
     return fig, ax
 
-def plot_box(fig, ax, master, title='', xaxis_label='Iteration', yaxis_label='Summed Return'):
+def plot_box(fig, ax, master, title='', xaxis_label='Epoch', yaxis_label='Summed Return'):
     return
 
 def assess_policy_stability(rewards, window_size=10, threshold_ratio=0.95):
@@ -1779,6 +1829,930 @@ mypathsminihack22 = {
 }
 
 
+
+# NEURIPS
+neurips_mctgraph = {
+    'MOSAIC' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcomm/T27/',
+    },
+
+    'PPO (per-task)' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/nocomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/nocomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/nocomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/nocomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/nocomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/nocomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/nocomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/nocomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/nocomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/nocomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/nocomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/nocomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/nocomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/nocomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/nocomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/nocomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/nocomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/nocomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/nocomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/nocomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/nocomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/nocomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/nocomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/nocomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/nocomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/nocomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/nocomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/nocomm/T27/',
+    }
+}
+
+neurips_mctgraph_combined = {
+    'MOSAIC' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm/T6/',
+    },
+
+    'PPO (per-task)' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/nocomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/nocomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/nocomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/nocomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/nocomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/nocomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/nocomm/T6/',
+    }
+}
+
+neurips_minihack = {
+    'MOSAIC' : {
+        "MH-N2-S4-v0": "NEURIPS/minihack/fullcomm/T0/",
+        "MH-N3-S4-v0": "NEURIPS/minihack/fullcomm/T1/",
+        "MH-N4-S4-v0": "NEURIPS/minihack/fullcomm/T2/",
+        "MH-N5-S4-v0": "NEURIPS/minihack/fullcomm/T3/",
+        "MH-N6-S4-v0": "NEURIPS/minihack/fullcomm/T4/",
+        "MH-N7-S4-v0": "NEURIPS/minihack/fullcomm/T5/",
+        "MH-N8-S4-v0": "NEURIPS/minihack/fullcomm/T6/",
+        "MH-N2-S6-v0": "NEURIPS/minihack/fullcomm/T7/",
+        "MH-N3-S6-v0": "NEURIPS/minihack/fullcomm/T8/",
+        "MH-N4-S6-v0": "NEURIPS/minihack/fullcomm/T9/",
+        "MH-N5-S6-v0": "NEURIPS/minihack/fullcomm/T10/",
+        "MH-N6-S6-v0": "NEURIPS/minihack/fullcomm/T11/",
+        "MH-N7-S6-v0": "NEURIPS/minihack/fullcomm/T12/",
+        "MH-N8-S6-v0": "NEURIPS/minihack/fullcomm/T13/"
+    },
+
+    'PPO (per-task)' : {
+        "MH-N2-S4-v0": "NEURIPS/minihack/nocomm/T0/",
+        "MH-N3-S4-v0": "NEURIPS/minihack/nocomm/T1/",
+        "MH-N4-S4-v0": "NEURIPS/minihack/nocomm/T2/",
+        "MH-N5-S4-v0": "NEURIPS/minihack/nocomm/T3/",
+        "MH-N6-S4-v0": "NEURIPS/minihack/nocomm/T4/",
+        "MH-N7-S4-v0": "NEURIPS/minihack/nocomm/T5/",
+        "MH-N8-S4-v0": "NEURIPS/minihack/nocomm/T6/",
+        "MH-N2-S6-v0": "NEURIPS/minihack/nocomm/T7/",
+        "MH-N3-S6-v0": "NEURIPS/minihack/nocomm/T8/",
+        "MH-N4-S6-v0": "NEURIPS/minihack/nocomm/T9/",
+        "MH-N5-S6-v0": "NEURIPS/minihack/nocomm/T10/",
+        "MH-N6-S6-v0": "NEURIPS/minihack/nocomm/T11/",
+        "MH-N7-S6-v0": "NEURIPS/minihack/nocomm/T12/",
+        "MH-N8-S6-v0": "NEURIPS/minihack/nocomm/T13/"
+    }
+}
+
+
+neurips_mctgraph_main_ablation = {
+    'MOSAIC' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcomm/T27/',
+    },
+
+    'No reward' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/noreward/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/noreward/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/noreward/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/noreward/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/noreward/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/noreward/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/noreward/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/noreward/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/noreward/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/noreward/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/noreward/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/noreward/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/noreward/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/noreward/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/noreward/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/noreward/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/noreward/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/noreward/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/noreward/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/noreward/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/noreward/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/noreward/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/noreward/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/noreward/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/noreward/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/noreward/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/noreward/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/noreward/T27/',
+    },
+
+    'No similarity' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/nosimilarity/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/nosimilarity/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/nosimilarity/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/nosimilarity/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/nosimilarity/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/nosimilarity/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/nosimilarity/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/nosimilarity/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/nosimilarity/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/nosimilarity/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/nosimilarity/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/nosimilarity/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/nosimilarity/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/nosimilarity/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/nosimilarity/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/nosimilarity/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/nosimilarity/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/nosimilarity/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/nosimilarity/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/nosimilarity/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/nosimilarity/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/nosimilarity/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/nosimilarity/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/nosimilarity/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/nosimilarity/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/nosimilarity/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/nosimilarity/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/nosimilarity/T27/',
+    },
+
+    'No adjusted coeffs' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/noadjcoeffs/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/noadjcoeffs/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/noadjcoeffs/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/noadjcoeffs/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/noadjcoeffs/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/noadjcoeffs/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/noadjcoeffs/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/noadjcoeffs/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/noadjcoeffs/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/noadjcoeffs/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/noadjcoeffs/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/noadjcoeffs/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/noadjcoeffs/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/noadjcoeffs/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/noadjcoeffs/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/noadjcoeffs/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/noadjcoeffs/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/noadjcoeffs/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/noadjcoeffs/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/noadjcoeffs/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/noadjcoeffs/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/noadjcoeffs/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/noadjcoeffs/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/noadjcoeffs/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/noadjcoeffs/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/noadjcoeffs/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/noadjcoeffs/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/noadjcoeffs/T27/',
+    },
+
+    'PPO (per-task)' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/nocomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/nocomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/nocomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/nocomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/nocomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/nocomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/nocomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/nocomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/nocomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/nocomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/nocomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/nocomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/nocomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/nocomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/nocomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/nocomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/nocomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/nocomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/nocomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/nocomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/nocomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/nocomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/nocomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/nocomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/nocomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/nocomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/nocomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/nocomm/T27/',
+    }
+}
+
+
+neurips_mctgraph_freq_ablation = {
+    'Frequency 1' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/freq1/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/freq1/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/freq1/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/freq1/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/freq1/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/freq1/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/freq1/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/freq1/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/freq1/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/freq1/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/freq1/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/freq1/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/freq1/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/freq1/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/freq1/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/freq1/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/freq1/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/freq1/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/freq1/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/freq1/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/freq1/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/freq1/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/freq1/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/freq1/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/freq1/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/freq1/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/freq1/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/freq1/T27/',
+    },
+
+    'Frequency 5' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/freq5/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/freq5/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/freq5/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/freq5/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/freq5/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/freq5/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/freq5/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/freq5/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/freq5/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/freq5/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/freq5/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/freq5/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/freq5/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/freq5/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/freq5/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/freq5/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/freq5/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/freq5/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/freq5/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/freq5/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/freq5/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/freq5/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/freq5/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/freq5/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/freq5/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/freq5/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/freq5/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/freq5/T27/',
+    },
+
+    'Frequency 10' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcomm/T27/',
+    },
+
+    'Frequency 25' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/freq25/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/freq25/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/freq25/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/freq25/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/freq25/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/freq25/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/freq25/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/freq25/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/freq25/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/freq25/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/freq25/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/freq25/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/freq25/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/freq25/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/freq25/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/freq25/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/freq25/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/freq25/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/freq25/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/freq25/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/freq25/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/freq25/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/freq25/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/freq25/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/freq25/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/freq25/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/freq25/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/freq25/T27/',
+    },
+
+    'Frequency 40' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/freq40/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/freq40/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/freq40/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/freq40/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/freq40/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/freq40/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/freq40/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/freq40/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/freq40/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/freq40/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/freq40/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/freq40/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/freq40/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/freq40/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/freq40/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/freq40/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/freq40/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/freq40/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/freq40/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/freq40/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/freq40/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/freq40/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/freq40/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/freq40/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/freq40/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/freq40/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/freq40/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/freq40/T27/',
+    },
+
+    'PPO (per-task)' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/nocomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/nocomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/nocomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/nocomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/nocomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/nocomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/nocomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/nocomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/nocomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/nocomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/nocomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/nocomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/nocomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/nocomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/nocomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/nocomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/nocomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/nocomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/nocomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/nocomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/nocomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/nocomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/nocomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/nocomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/nocomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/nocomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/nocomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/nocomm/T27/',
+    }
+}
+
+
+neurips_mctgraph_test = {
+    'MOSAIC' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcomm/T27/',
+    },
+
+    'No moving avg' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm3/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm3/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm3/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm3/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm3/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm3/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm3/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcomm3/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcomm3/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcomm3/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcomm3/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcomm3/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcomm3/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcomm3/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcomm3/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcomm3/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcomm3/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcomm3/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcomm3/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcomm3/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcomm3/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcomm3/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcomm3/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcomm3/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcomm3/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcomm3/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcomm3/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcomm3/T27/',
+    },
+
+    'With moving avg' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcommwmovavg/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcommwmovavg/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcommwmovavg/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcommwmovavg/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcommwmovavg/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcommwmovavg/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcommwmovavg/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcommwmovavg/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcommwmovavg/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcommwmovavg/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcommwmovavg/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcommwmovavg/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcommwmovavg/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcommwmovavg/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcommwmovavg/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcommwmovavg/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcommwmovavg/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcommwmovavg/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcommwmovavg/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcommwmovavg/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcommwmovavg/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcommwmovavg/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcommwmovavg/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcommwmovavg/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcommwmovavg/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcommwmovavg/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcommwmovavg/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcommwmovavg/T27/',
+    },
+
+    'PPO (per-task)' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/nocomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/nocomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/nocomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/nocomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/nocomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/nocomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/nocomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/nocomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/nocomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/nocomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/nocomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/nocomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/nocomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/nocomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/nocomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/nocomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/nocomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/nocomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/nocomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/nocomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/nocomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/nocomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/nocomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/nocomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/nocomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/nocomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/nocomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/nocomm/T27/',
+    }
+}
+
+
+neurips_mctgraph_detect_ablation = {
+    'N64 M50' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/N64_M50/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/N64_M50/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/N64_M50/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/N64_M50/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/N64_M50/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/N64_M50/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/N64_M50/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/N64_M50/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/N64_M50/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/N64_M50/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/N64_M50/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/N64_M50/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/N64_M50/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/N64_M50/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/N64_M50/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/N64_M50/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/N64_M50/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/N64_M50/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/N64_M50/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/N64_M50/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/N64_M50/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/N64_M50/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/N64_M50/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/N64_M50/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/N64_M50/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/N64_M50/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/N64_M50/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/N64_M50/T27/',
+    },
+
+    'N128 M50 (MOSAIC)' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/fullcomm/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/fullcomm/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/fullcomm/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/fullcomm/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/fullcomm/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/fullcomm/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/fullcomm/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/fullcomm/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/fullcomm/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/fullcomm/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/fullcomm/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/fullcomm/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/fullcomm/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/fullcomm/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/fullcomm/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/fullcomm/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/fullcomm/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/fullcomm/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/fullcomm/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/fullcomm/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/fullcomm/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/fullcomm/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/fullcomm/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/fullcomm/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/fullcomm/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/fullcomm/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/fullcomm/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/fullcomm/T27/',
+    },
+
+    'N128 M10' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/M10/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/M10/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/M10/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/M10/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/M10/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/M10/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/M10/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/M10/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/M10/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/M10/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/M10/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/M10/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/M10/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/M10/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/M10/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/M10/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/M10/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/M10/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/M10/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/M10/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/M10/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/M10/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/M10/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/M10/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/M10/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/M10/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/M10/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/M10/T27/',
+    },
+
+    'N128 M20' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/N128_M20/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/N128_M20/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/N128_M20/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/N128_M20/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/N128_M20/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/N128_M20/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/N128_M20/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/N128_M20/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/N128_M20/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/N128_M20/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/N128_M20/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/N128_M20/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/N128_M20/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/N128_M20/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/N128_M20/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/N128_M20/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/N128_M20/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/N128_M20/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/N128_M20/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/N128_M20/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/N128_M20/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/N128_M20/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/N128_M20/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/N128_M20/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/N128_M20/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/N128_M20/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/N128_M20/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/N128_M20/T27/',
+    },
+
+    'N128 M30' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/M30/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/M30/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/M30/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/M30/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/M30/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/M30/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/M30/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/M30/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/M30/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/M30/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/M30/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/M30/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/M30/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/M30/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/M30/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/M30/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/M30/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/M30/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/M30/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/M30/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/M30/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/M30/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/M30/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/M30/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/M30/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/M30/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/M30/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/M30/T27/',
+    },
+
+    'N128 M70' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/M70/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/M70/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/M70/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/M70/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/M70/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/M70/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/M70/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/M70/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/M70/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/M70/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/M70/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/M70/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/M70/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/M70/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/M70/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/M70/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/M70/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/M70/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/M70/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/M70/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/M70/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/M70/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/M70/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/M70/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/M70/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/M70/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/M70/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/M70/T27/',
+    },
+
+    'N128 M100' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/N128_M100/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/N128_M100/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/N128_M100/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/N128_M100/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/N128_M100/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/N128_M100/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/N128_M100/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/N128_M100/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/N128_M100/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/N128_M100/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/N128_M100/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/N128_M100/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/N128_M100/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/N128_M100/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/N128_M100/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/N128_M100/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/N128_M100/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/N128_M100/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/N128_M100/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/N128_M100/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/N128_M100/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/N128_M100/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/N128_M100/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/N128_M100/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/N128_M100/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/N128_M100/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/N128_M100/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/N128_M100/T27/',
+    },
+
+    'N256 M50' : {
+        'Dist 1 Level 2' : 'NEURIPS/mctgraph/detect/N256_M50/T0/',
+        'Dist 1 Level 3' : 'NEURIPS/mctgraph/detect/N256_M50/T1/',
+        'Dist 1 Level 4' : 'NEURIPS/mctgraph/detect/N256_M50/T2/',
+        'Dist 1 Level 5' : 'NEURIPS/mctgraph/detect/N256_M50/T3/',
+        'Dist 1 Level 6' : 'NEURIPS/mctgraph/detect/N256_M50/T4/',
+        'Dist 1 Level 7' : 'NEURIPS/mctgraph/detect/N256_M50/T5/',
+        'Dist 1 Level 8' : 'NEURIPS/mctgraph/detect/N256_M50/T6/',
+
+        'Dist 2 Level 2' : 'NEURIPS/mctgraph/detect/N256_M50/T7/',
+        'Dist 2 Level 3' : 'NEURIPS/mctgraph/detect/N256_M50/T8/',
+        'Dist 2 Level 4' : 'NEURIPS/mctgraph/detect/N256_M50/T9/',
+        'Dist 2 Level 5' : 'NEURIPS/mctgraph/detect/N256_M50/T10/',
+        'Dist 2 Level 6' : 'NEURIPS/mctgraph/detect/N256_M50/T11/',
+        'Dist 2 Level 7' : 'NEURIPS/mctgraph/detect/N256_M50/T12/',
+        'Dist 2 Level 8' : 'NEURIPS/mctgraph/detect/N256_M50/T13/',
+        
+        'Dist 3 Level 2' : 'NEURIPS/mctgraph/detect/N256_M50/T14/',
+        'Dist 3 Level 3' : 'NEURIPS/mctgraph/detect/N256_M50/T15/',
+        'Dist 3 Level 4' : 'NEURIPS/mctgraph/detect/N256_M50/T16/',
+        'Dist 3 Level 5' : 'NEURIPS/mctgraph/detect/N256_M50/T17/',
+        'Dist 3 Level 6' : 'NEURIPS/mctgraph/detect/N256_M50/T18/',
+        'Dist 3 Level 7' : 'NEURIPS/mctgraph/detect/N256_M50/T19/',
+        'Dist 3 Level 8' : 'NEURIPS/mctgraph/detect/N256_M50/T20/',
+
+        'Dist 4 Level 2' : 'NEURIPS/mctgraph/detect/N256_M50/T21/',
+        'Dist 4 Level 3' : 'NEURIPS/mctgraph/detect/N256_M50/T22/',
+        'Dist 4 Level 4' : 'NEURIPS/mctgraph/detect/N256_M50/T23/',
+        'Dist 4 Level 5' : 'NEURIPS/mctgraph/detect/N256_M50/T24/',
+        'Dist 4 Level 6' : 'NEURIPS/mctgraph/detect/N256_M50/T25/',
+        'Dist 4 Level 7' : 'NEURIPS/mctgraph/detect/N256_M50/T26/',
+        'Dist 4 Level 8' : 'NEURIPS/mctgraph/detect/N256_M50/T27/',
+    },
+}
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--plot_name', help='paths to the experiment folder for single'\
@@ -1791,17 +2765,17 @@ if __name__ == '__main__':
     #MYPATHS = mypaths10
     #MYPATHS = mypaths15
     #MYPATHS = mypaths11
-    MYPATHS = mypathsminihack22
+    MYPATHS = neurips_mctgraph_detect_ablation
 
     fig2 = plt.figure(figsize=(30, 6))
     ax2 = fig2.subplots()
 
     # Set up axis labels, fonts, and limits
-    ax2.set_xlabel('Iteration')
+    ax2.set_xlabel('Epoch')
     ax2.xaxis.label.set_fontsize(20)
     ax2.set_ylabel('Summed Return')
     ax2.yaxis.label.set_fontsize(20)
-    #ax.set_ylim(0.0, 1.0)
+    #ax2.set_ylim(0, 11.0)
 
     # Axis ticks and grid
     ax2.xaxis.tick_bottom()
@@ -1897,6 +2871,7 @@ if __name__ == '__main__':
         fig1.savefig(f'./log/plots/{plot_name}.pdf', dpi=256, format='pdf', bbox_inches='tight')
 
         fig2, ax2 = plot_sum(fig2, ax2, master, title=plot_name, yaxis_label='Instant Cumulative Return')
+        #save_plot_data_to_csv(master)
 
         #fig3, ax3 = plot_box(fig3, ax3, master, title=plot_name, yaxis_label='Summed Return')
 

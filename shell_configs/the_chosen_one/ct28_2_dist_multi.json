@@ -8,7 +8,7 @@
     9265, 9266, 9267, 9268, 9269, 9270, 9271, 9272, 9273, 9274, 9275, 9276, 9277, 9278, 9279, 9280, 9281, 9282, 
     9283, 9284, 9285, 9286, 9287, 9288, 9289, 9290],
     "detect_reference_num": 50,
-    "detect_num_samples": 128,
+    "detect_num_samples": 256,
     "emb_dist_threshold": 24,
     "detect_module_activation_frequency": 1,
     "agents": [

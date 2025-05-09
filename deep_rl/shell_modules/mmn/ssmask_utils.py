@@ -725,8 +725,8 @@ class ComposeMultitaskMaskLinear(nn.Linear):
 """
 
 class CompBLC_MultitaskMaskLinear(nn.Linear):
-    def __init__(self, *args, discrete=True, num_tasks=1, max_community_masks=12, seed=1, new_mask_type=NEW_MASK_RANDOM, bias=False, alpha=0.1, **kwargs):
-        super().__init__(*args, bias=False, **kwargs)
+    def __init__(self, *args, discrete=True, num_tasks=1, max_community_masks=30, seed=1, new_mask_type=NEW_MASK_RANDOM, bias=False, alpha=0.1,  use_naive_blc=False, **kwargs):
+        super().__init__(*args, bias=bias, **kwargs)
         self.num_tasks = num_tasks
         
         # Pre-generate the random masks for each task using mask_init() while keeping the backbone network the same
@@ -747,8 +747,11 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
         self.new_mask_type = new_mask_type
         
         self.comm_masks = []
-        self.num_comm_masks = len(self.comm_masks)
-        self.k = num_tasks#max_community_masks
+        #self.num_comm_masks = len(self.comm_masks)
+        self.k = max_community_masks
+
+        self.use_naive_blc = use_naive_blc
+        print(f'NAIVE LINEAR COMB: {self.use_naive_blc}')
 
         if self.new_mask_type == NEW_MASK_LINEAR_COMB:
             self.betas = nn.Parameter(torch.zeros(num_tasks, self.k + num_tasks).type(torch.float32))
@@ -765,6 +768,10 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
 
         self.prev_reward = None
         self.alpha = alpha
+
+    @property
+    def num_comm_masks(self):
+        return len(self.comm_masks)
     
     @torch.no_grad()
     def cache_masks(self):
@@ -875,7 +882,7 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
         
         _betas = self.betas[self.task, 0:self.task+1+self.num_comm_masks]
         _betas = torch.softmax(_betas, dim=-1)
-        assert len(_betas) == len(_subnets), 'an error ocurred'
+        assert len(_betas) == len(_subnets), f'an error ocurred, length of _betas: {len(_betas), _betas}, length of subnets: {len(_subnets)}'
 
         
         _subnets = [_b * _s for _b, _s in  zip(_betas, _subnets)]
@@ -898,7 +905,7 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
         _betas = self.betas[self.task, self.task:self.task+1+self.num_comm_masks]
         print(f'Betas before softmax: {_betas}')
         _betas = torch.softmax(_betas, dim=-1)
-        assert len(_betas) == len(_subnets), 'an error ocurred'
+        assert len(_betas) == len(_subnets), f'an error ocurred, length of _betas: {len(_betas), _betas}, length of subnets: {len(_subnets)} task: {self.task}, num_masks: {self.num_comm_masks}'
         print(f'Betas after softmax: {_betas}')
 
         _subnets = [_b * _s for _b, _s in  zip(_betas, _subnets)]
@@ -906,7 +913,7 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
         self.scores[self.task].data = _subnet_linear_comb.data
         return
     
-    @torch.no_grad()
+    '''@torch.no_grad()
     def update_comm_masks(self, masks, current_reward=0.0):
         print('Consolidating existing comm masks')
         self.consolidate_comm_mask() # Consolidate the current community masks only NOTE: Replace this with consolidate_mask() if we want to consolidate all knowledge
@@ -945,8 +952,8 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
 
 
                 e = 1e-8
-                r = max(r, 0)
-                r = min(r, 0.9999)
+                r = max(r, 0) # This makes sure that the current task mask is not -inf after log function
+                r = min(r, 0.9999)  # This makes sure that the acquired masks are not -inf after log function
                 self.betas.data[t, 0:t+1] = 0.5 + 0.5*r                # Set current mask beta to 0.5 + reward scaling
                 self.betas.data[t, t+1:t+1+c] = ((0.5 * (1-r))) / c    # Set remaining beta as (1 - current mask beta) / c
 
@@ -971,7 +978,37 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
                 # Redo the log operation
                 self.betas.data[t, 0:t+1+c] = torch.log(self.betas.data[t, 0:t+1+c])
         
-        print(f'LOG BETAS IN UPDATE_COMM_MASKS(): {self.betas}')
+        print(f'LOG BETAS IN UPDATE_COMM_MASKS(): {self.betas}')'''
+
+    @torch.no_grad()
+    def update_comm_masks(self, masks, current_reward=0.0):
+        print('Consolidating existing comm masks')
+        self.consolidate_comm_mask()
+
+        print('Replacing with new comm masks')
+        self.comm_masks = [mask.to(Config.DEVICE) for mask in masks]
+
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB:
+            t = self.task
+            c = self.num_comm_masks
+
+            print('IN UPDATE COMM MASKS:', t, c)
+
+            if self.use_naive_blc:
+                self.betas.data[t, t] = 0.5
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = 0.5 / c
+                betas_slice = self.betas.data[t, 0:t+1+c]
+                self.betas.data[t, 0:t+1+c] = torch.log(betas_slice / betas_slice.sum())
+                print(f"[Naive BLC] Updated betas for task {t}: {self.betas.data[t, 0:t+1+c]}")
+            else:
+                r = max(0.0, min(current_reward, 0.9999))
+                self.betas.data[t, t] = 0.5 + 0.5 * r
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = (0.5 * (1 - r)) / c
+                betas_slice = self.betas.data[t, 0:t+1+c]
+                self.betas.data[t, 0:t+1+c] = torch.log(betas_slice / betas_slice.sum())
+                print(f"[Reward-Based BLC] Updated betas for task {t}: {self.betas.data[t, 0:t+1+c]}")
 
     def __repr__(self):
         return f"MultitaskMaskLinear({self.in_dims}, {self.out_dims})"
@@ -994,7 +1031,7 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
         self.cache_masks() 
         return
 
-    @torch.no_grad()
+    '''@torch.no_grad()
     def set_task(self, task, new_task=False, current_reward=0.0):
         self.task = task
         r = current_reward.item() if type(current_reward) == np.ndarray else current_reward # It was getting an ndarray for some reason so unpack
@@ -1051,7 +1088,7 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
                 
             self.betas.data[t, 0:t+1+c] = torch.log(self.betas.data[t, 0:t+1+c])
 
-            print(self.betas)
+            print(self.betas)'''
     '''def set_task(self, task, new_task=False, reward_input=0.0):
         self.task = task
         if self.new_mask_type == NEW_MASK_LINEAR_COMB and new_task:
@@ -1071,14 +1108,459 @@ class CompBLC_MultitaskMaskLinear(nn.Linear):
             self.betas.data[task, 0:k+self.k] = torch.log(self.betas.data[task, 0:k+self.k])
 
             print(self.betas)'''
-      
+
+    @torch.no_grad()
+    def set_task(self, task, new_task=False, current_reward=0.0):
+        self.task = task
+        t = task
+        c = self.num_comm_masks
+
+        print('IN SET TASK:', t, c)
+
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB and new_task:
+            if self.use_naive_blc:
+                # Use static BLC: 0.5 + uniform
+                self.betas.data[t, t] = 0.5
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = 0.5 / c
+                betas_slice = self.betas.data[t, 0:t+1+c]
+                self.betas.data[t, 0:t+1+c] = torch.log(betas_slice / betas_slice.sum())
+                print(f"[Naive BLC] Task {t} betas:", self.betas.data[t, 0:t+1+c])
+            else:
+                # Use reward-adaptive logic
+                r = current_reward.item() if isinstance(current_reward, np.ndarray) else current_reward
+                r = max(0, min(r, 0.9999))
+                self.betas.data[t, t] = 0.5 + 0.5 * r
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = (0.5 * (1 - r)) / c
+                betas_slice = self.betas.data[t, 0:t+1+c]
+                self.betas.data[t, 0:t+1+c] = torch.log(betas_slice / betas_slice.sum())
+                print(f"[Reward-Based BLC] Task {t} betas:", self.betas.data[t, 0:t+1+c])
+
     def get_betas(self, task=None, c=12):
         if task is None: 
             #return self.betas[self.task, 0:self.task+1+c]
-            return torch.softmax(self.betas[self.task, 0:self.task+1+c], dim=-1)
+            return torch.softmax(self.betas[self.task, self.task:self.task+1+self.num_comm_masks], dim=-1)
         else: 
             #return self.betas[self.task, 0:self.task+1+c]
-            return torch.softmax(self.betas[task, 0:task+1+c], dim=-1)
+            return torch.softmax(self.betas[task, :], dim=-1)
+
+class CompBLC_MultitaskMaskLinear_old(nn.Linear):
+    def __init__(self, *args, discrete=True, num_tasks=1, max_community_masks=30, seed=1, new_mask_type=NEW_MASK_RANDOM, bias=False, alpha=0.1,  use_naive_blc=False, **kwargs):
+        super().__init__(*args, bias=bias, **kwargs)
+        self.num_tasks = num_tasks
+        
+        # Pre-generate the random masks for each task using mask_init() while keeping the backbone network the same
+        #torch.manual_seed(seed)
+        self.scores = nn.ParameterList(
+            [
+                nn.Parameter(mask_init(self))
+                for _ in range(num_tasks)
+            ]
+        )
+
+        # Keep weights untrained
+        self.weight.requires_grad = False
+        signed_constant(self)
+
+        self.task = -1
+        self.num_tasks_learned = 0
+        self.new_mask_type = new_mask_type
+        
+        self.comm_masks = []
+        self.num_comm_masks = len(self.comm_masks)
+        self.k = max_community_masks
+
+        self.use_naive_blc = use_naive_blc
+        print(f'NAIVE LINEAR COMB: {self.use_naive_blc}')
+
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB:
+            self.betas = nn.Parameter(torch.zeros(num_tasks, self.k + num_tasks).type(torch.float32))
+            self._forward_mask = self._forward_mask_linear_comb
+        else:
+            self.betas = None
+            self._forward_mask = self._forward_mask_normal
+
+        # subnet class
+        self._subnet_class = GetSubnetDiscrete if discrete else GetSubnetContinuous
+
+        # to initialize/register the stacked module buffer.
+        self.cache_masks()
+
+        self.prev_reward = None
+        self.alpha = alpha
+
+    @torch.no_grad()
+    def cache_masks(self):
+        self.register_buffer(
+            "stacked",
+            torch.stack(
+                [
+                    self._subnet_class.apply(self.scores[j])
+                    for j in range(self.num_tasks)
+                ]
+            ),
+        )
+
+    def clear_masks(self):
+        self.register_buffer("stacked", None)
+
+    def forward(self, x):
+        if self.task < 0:
+            raise ValueError('`self.task` should be set to >= 0')
+            '''# Superimposed forward pass
+            alpha_weights = self.alphas[: self.num_tasks_learned]
+            idxs = (alpha_weights > 0).squeeze().view(self.num_tasks_learned)
+            if len(idxs.shape) == 0:
+                idxs = idxs.view(1)
+            subnet = (
+                alpha_weights[idxs]
+                * self.stacked[: self.num_tasks_learned][idxs]
+            ).sum(dim=0)'''
+        else:
+            # Subnet forward pass (given task info in self.task)
+            #subnet = self._subnet_class.apply(self.scores[self.task])
+            subnet = self._forward_mask()#NOTE Here is where we crash !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        w = self.weight * subnet
+        x = F.linear(x, w, self.bias)
+        return x
+
+    def _forward_mask_normal(self):
+        return self._subnet_class.apply(self.scores[self.task])
+
+    def _forward_mask_linear_comb(self):
+        _subnet = self.scores[self.task]
+
+        if len(self.comm_masks) == 0:
+            return self._subnet_class.apply(_subnet)
+        
+        _subnets = [self.scores[idx].detach() for idx in range(self.task)] if not(self.task == 0 or self.task < self.num_tasks_learned) else []
+        _subnets.append(_subnet)
+        _subnets.extend([c.detach() for c in self.comm_masks])
+
+        _betas = self.betas[self.task, 0:self.task+1+self.num_comm_masks]
+        _betas = torch.softmax(_betas, dim=-1)
+
+        _subnets = [_b * _s for _b, _s in zip(_betas, _subnets)]
+        _subnet_linear_comb = torch.stack(_subnets, dim=0).sum(dim=0)
+        return self._subnet_class.apply(_subnet_linear_comb)
+
+    """def _forward_mask_linear_comb(self):
+        _subnet = self.scores[self.task]    # Get our current task training subnet
+
+        if self.task == 0 or self.task < self.num_tasks_learned:
+            if len(self.comm_masks) == 0:
+                return self._subnet_class.apply(_subnet)
+            
+            _subnets = [_subnet]
+            _subnets.extend([c.detach() for c in self.comm_masks])
+
+            _betas = self.betas[self.task, 0:self.task+1+self.num_comm_masks]    # Get betas for community masks and subnet
+            _betas = torch.softmax(_betas, dim=-1)  # Apply softmax to the betas
+
+            # Perform linear combinantions
+            _subnets = [_b * _s for _b, _s in zip(_betas, _subnets)]    
+            _subnet_linear_comb = torch.stack(_subnets, dim=0).sum(dim=0)
+            return self._subnet_class.apply(_subnet_linear_comb)
+        
+        else:
+            _subnets = [self.scores[idx].detach() for idx in range(self.task)]
+            assert len(_subnets) > 0, 'an error occured'
+            _subnets.append(_subnet)
+
+            if len(self.comm_masks) > 0: _subnets.extend([c.detach() for c in self.comm_masks])
+            # This gives us _subnets = [ LLmasks..., current subnet..., community masks... ]
+
+
+            _betas = self.betas[self.task, 0:self.task+1+self.num_comm_masks]    # Get the row from 2D betas for this task up to the number of community masks (k)
+            _betas = torch.softmax(_betas, dim=1)
+            assert len(_betas) == len(_subnets), 'an error occured'
+
+            # Perform linear combinantions
+            _subnets = [_b * _s for _b, _s in zip(_betas, _subnets)]    
+            _subnet_linear_comb = torch.stack(_subnets, dim=0).sum(dim=0)
+            return self._subnet_class.apply(_subnet_linear_comb)"""
+    
+    @torch.no_grad()
+    def consolidate_mask(self):
+        """
+        Consolidate all the masks (LL, community and current training subnet) at end of training on task
+        """
+        if self.new_mask_type == NEW_MASK_RANDOM: return
+        if self.task < self.num_tasks_learned: return
+        if self.task <= 0 and len(self.comm_masks) == 0: return # If there are no LL masks (because we are on the first task) and there are no community masks, then there is no need for consolidation.
+        if self.task > 0:  # Not on the first task so we can expect LL masks
+            _subnets = [self.scores[idx].detach() for idx in range(self.task)]
+        
+        _subnet = self.scores[self.task]
+        _subnets.append(_subnet)
+        _subnets.extend([c.detach() for c in self.comm_masks])
+        assert len(_subnets) > 0, 'an error occured'
+        
+        _betas = self.betas[self.task, 0:self.task+1+self.num_comm_masks]
+        _betas = torch.softmax(_betas, dim=-1)
+        assert len(_betas) == len(_subnets), f'an error ocurred, length of _betas: {len(_betas), _betas}, length of subnets: {len(_subnets)}'
+
+        
+        _subnets = [_b * _s for _b, _s in  zip(_betas, _subnets)]
+        _subnet_linear_comb = torch.stack(_subnets, dim=0).sum(dim=0)
+        self.scores[self.task].data = _subnet_linear_comb.data
+        return
+
+    @torch.no_grad()
+    def consolidate_comm_mask(self):
+        if self.new_mask_type == NEW_MASK_RANDOM: return
+        if self.task < self.num_tasks_learned: return
+        if len(self.comm_masks) == 0: return # If there are no community masks, then there is no need for consolidation.
+        if self.betas is None:return
+
+        _subnet = self.scores[self.task]
+        _subnets = [_subnet]
+        _subnets.extend([c.detach() for c in self.comm_masks])
+        assert len(_subnets) > 0, 'an error occured'
+        
+        _betas = self.betas[self.task, self.task:self.task+1+self.num_comm_masks]
+        print(f'Betas before softmax: {_betas}')
+        _betas = torch.softmax(_betas, dim=-1)
+        assert len(_betas) == len(_subnets), f'an error ocurred, length of _betas: {len(_betas), _betas}, length of subnets: {len(_subnets)} task: {self.task}, num_masks: {self.num_comm_masks}'
+        print(f'Betas after softmax: {_betas}')
+
+        _subnets = [_b * _s for _b, _s in  zip(_betas, _subnets)]
+        _subnet_linear_comb = torch.stack(_subnets, dim=0).sum(dim=0)
+        self.scores[self.task].data = _subnet_linear_comb.data
+        return
+    
+    @torch.no_grad()
+    def update_comm_masks(self, masks, current_reward=0.0):
+        print('Consolidating existing comm masks')
+        self.consolidate_comm_mask() # Consolidate the current community masks only NOTE: Replace this with consolidate_mask() if we want to consolidate all knowledge
+        self.cache_masks()  # NOTE: I'm not sure if we need to do this, but following the original examples I've put it in.
+        
+        print('Replacing with new comm masks')
+        self.comm_masks = [mask.to(Config.DEVICE) for mask in masks] # Update to the new community masks
+        self.num_comm_masks = len(self.comm_masks)  # Update number of comm masks
+        
+        # Reset the betas for the community masks
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB:
+            if self.task == 0:
+                t = self.task
+                c = self.num_comm_masks
+                r = current_reward
+
+                # Undo log operation
+                self.betas.data[t, 0:t+1+c] = torch.exp(self.betas.data[t, 0:t+1+c])
+
+                # Reset beta values to initial position
+                #self.betas.data[t, 0:t+1] = 0.5
+                #self.betas.data[t, t+1:t+1+c] = 0.5 / c
+                
+                #if self.prev_reward is None:
+                #    self.prev_reward = r
+
+                #reward_change = abs(r - self.prev_reward)
+                #d = np.exp(-self.alpha * reward_change)
+
+                #current_network_weight = 0.5 + 0.5 * (d * r)
+                #other_network_weight = 0.5 * (1 - d * r) / c
+
+                
+                #print(f'Current mask: {0.5+0.5*r}')
+                #print(f'Incoming masks: {(0.5*(1-r))/c}')
+
+                r = max(r, 0) # This makes sure that the current task mask is not -inf after log function
+                r = min(r, 0.9999)  # This makes sure that the acquired masks are not -inf after log function
+                self.betas.data[t, 0:t+1] = 0.5 + 0.5*r                # Set current mask beta to 0.5 + reward scaling
+                self.betas.data[t, t+1:t+1+c] = ((0.5 * (1-r))) / c    # Set remaining beta as (1 - current mask beta) / c
+
+                #self.betas.data[t, 0:t+1] = current_network_weight
+                #self.betas.data[t, t+1:t+1+c] = other_network_weight
+
+                #if self.betas.data[t, 0:t+1+c].min() < 0.0:
+                #    self.betas.data[t, 0:t+1+c] = self.betas.data[t, 0:t+1+c] - self.betas.data[t, 0:t+1+c].min()
+                #    self.betas.data[t, 0:t+1+c] = self.betas.data[t, 0:t+1+c] / self.betas.data[t, 0:t+1+c].sum()
+
+                #value = 0.5 + 0.5*(1 / (1 + np.exp(-14 * (r-0.5)))) * ((1-0.001) + 0.001)
+                #self.betas.data[t, 0:t+1] = value
+                #self.betas.data[t, t+1:t+1+c] = (1-value)/c
+
+
+
+
+                #threshold = torch.sum(self.betas.data[t, 0:t+1])    # for self.task > 0 this will take into account for the current subnet and the LL masks and thus following an adaptation of BLC using 1/3 split instead of 1/2
+                #remainder = 1. - threshold                          # Calculate remaining weighting
+                #self.betas.data[t, t+1:t+1+c] = remainder / c
+                
+                # Redo the log operation
+                self.betas.data[t, 0:t+1+c] = torch.log(self.betas.data[t, 0:t+1+c])
+        
+        print(f'LOG BETAS IN UPDATE_COMM_MASKS(): {self.betas}')
+
+    '''@torch.no_grad()
+    def update_comm_masks(self, masks, current_reward=0.0):
+        print('Consolidating existing comm masks')
+        self.consolidate_comm_mask()
+        self.cache_masks()
+
+        print('Replacing with new comm masks')
+        self.comm_masks = [mask.to(Config.DEVICE) for mask in masks]
+        self.num_comm_masks = len(self.comm_masks)
+
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB:
+            t = self.task
+            c = self.num_comm_masks
+
+
+            print('IN UPDATE COMM MASKS:',t,c)
+
+            if self.use_naive_blc:
+                # Naive BLC: fixed 0.5 + uniform
+                self.betas.data[t, t] = 0.5
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = 0.5 / c
+                self.betas.data[t, 0:t+1+c] = torch.log_softmax(self.betas.data[t, 0:t+1+c], dim=-1)
+                print(f"[Naive BLC] Updated betas for task {t}: {self.betas.data[t, 0:t+1+c]}")
+            else:
+                # Reward-based version (existing logic)
+                r = max(0.0, min(current_reward, 0.9999))
+                self.betas.data[t, 0:t+1] = 0.5 + 0.5 * r
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = (0.5 * (1 - r)) / c
+                self.betas.data[t, 0:t+1+c] = torch.log_softmax(self.betas.data[t, 0:t+1+c], dim=-1)
+                print(f"[Reward-Based BLC] Updated betas for task {t}: {self.betas.data[t, 0:t+1+c]}")'''
+
+    def __repr__(self):
+        return f"MultitaskMaskLinear({self.in_dims}, {self.out_dims})"
+
+    @torch.no_grad()
+    def get_mask(self, task, raw_score=True):
+        # return raw scores and not the processed mask, since the
+        # scores are the parameters that will be trained in other
+        # agents. the binary masks would not be trained but rather
+        # generated from raw scores in other agents
+        if raw_score:
+            return self.scores[task]
+        else:
+            return self._subnet_class.apply(self.scores[task])
+
+    @torch.no_grad()
+    def set_mask(self, mask, task):
+        self.scores[task].data = mask
+        # NOTE, this operation might not be required and could be remove to save compute time
+        self.cache_masks() 
+        return
+
+    '''@torch.no_grad()
+    def set_task(self, task, new_task=False, current_reward=0.0):
+        self.task = task
+        r = current_reward.item() if type(current_reward) == np.ndarray else current_reward # It was getting an ndarray for some reason so unpack
+        t = task
+        c = self.k
+
+
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB and new_task:
+            print('IN SET_TASK()')
+            if self.task > 0:   # If not first task then use BLC (1/3)
+                self.betas.data[t, 0:t] = 1/(3*task)
+                self.betas.data[t, t:t+1] = 1/3
+                self.betas.data[t, t+1:t+1+c] = 1 / (3*c)
+
+            else: # otherwise use BLC (1/2)
+                #self.betas.data[t, 0:t+1] = 0.5
+                #self.betas.data[t, t+1:t+1+c] = 0.5 / c
+
+                #if self.prev_reward is None:
+                #    self.prev_reward = r
+
+                #reward_change = abs(r - self.prev_reward)
+                #d = np.exp(-self.alpha * reward_change)
+
+                #current_network_weight = 0.5 + 0.5 * (d * r)
+                #other_network_weight = 0.5 * (1 - d * r) / c
+
+                
+                #print(f'Current mask: {0.5+0.5*r}')
+                #print(f'Incoming masks: {(0.5*(1-r))/c}')
+
+
+                e = 1e-8
+                r = max(r, 0)
+                r = min(r, 0.9999)
+                self.betas.data[t, 0:t+1] = 0.5 + 0.5*r                # Set current mask beta to 0.5 + reward scaling
+                self.betas.data[t, t+1:t+1+c] = ((0.5 * (1-r))) / c    # Set remaining beta as (1 - current mask beta) / c
+
+                #self.betas.data[t, 0:t+1] = current_network_weight
+                #self.betas.data[t, t+1:t+1+c] = other_network_weight
+
+                #if self.betas.data[t, 0:t+1+c].min() < 0.0:
+                #    self.betas.data[t, 0:t+1+c] = self.betas.data[t, 0:t+1+c] - self.betas.data[t, 0:t+1+c].min()
+                #    self.betas.data[t, 0:t+1+c] = self.betas.data[t, 0:t+1+c] / self.betas.data[t, 0:t+1+c].sum()
+                
+
+                #value = 0.5 + 0.5*(1 / (1 + np.exp(-14 * (r-0.5)))) * ((1-0.001) + 0.001)
+                #self.betas.data[t, 0:t+1] = value
+                #self.betas.data[t, t+1:t+1+c] = (1-value)/c
+
+
+            #self.betas.data[task, 0:k] = 1 / (2*k)
+            #self.betas.data[task, k:k+self.k] = 1 / (2*self.k)
+                
+            self.betas.data[t, 0:t+1+c] = torch.log(self.betas.data[t, 0:t+1+c])
+
+            print(self.betas)'''
+    
+    def set_task(self, task, new_task=False, current_reward=0.0):
+        self.task = task
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB and new_task:
+            print('IN SET_TASK()')
+            k = task + 1
+            if self.task > 0:   # If not first task then use BLC (1/3)
+                self.betas.data[task, 0:task] = 1/(3*task)
+                self.betas.data[task, task:k] = 1/3
+                self.betas.data[task, k:k+self.k] = 1 / (3*self.k)
+
+            else: # otherwise use BLC (1/2)
+                self.betas.data[task, 0:k] = 1 / (2*k)
+                self.betas.data[task, k:k+self.k] = 1 / (2*self.k)
+            #self.betas.data[task, 0:k] = 1 / (2*k)
+            #self.betas.data[task, k:k+self.k] = 1 / (2*self.k)
+                
+            self.betas.data[task, 0:k+self.k] = torch.log(self.betas.data[task, 0:k+self.k])
+
+            print(self.betas)
+
+    '''@torch.no_grad()
+    def set_task(self, task, new_task=False, current_reward=0.0):
+        self.task = task
+        t = task
+        c = self.num_comm_masks
+
+        print('IN SET TASK:', t, c)
+
+        if self.new_mask_type == NEW_MASK_LINEAR_COMB and new_task:
+            if self.use_naive_blc:
+                # Use static BLC: 0.5 + uniform
+                self.betas.data[t, t] = 0.5
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = 0.5 / c
+                self.betas.data[t, 0:t+1+c] = torch.log_softmax(self.betas.data[t, 0:t+1+c], dim=-1)
+                print(f"[Naive BLC] Task {t} betas:", self.betas.data[t, 0:t+1+c])
+            else:
+                # Use reward-adaptive logic (existing implementation)
+                r = current_reward.item() if isinstance(current_reward, np.ndarray) else current_reward
+                r = max(0, min(r, 0.9999))
+                self.betas.data[t, t] = 0.5 + 0.5 * r
+                if c > 0:
+                    self.betas.data[t, t+1:t+1+c] = 0.5 * (1 - r) / c
+                self.betas.data[t, 0:t+1+c] = torch.log_softmax(self.betas.data[t, 0:t+1+c], dim=-1)
+                print(f"[Reward-Based BLC] Task {t} betas:", self.betas.data[t, 0:t+1+c])'''
+
+    def get_betas(self, task=None, c=12):
+        if task is None: 
+            #return self.betas[self.task, 0:self.task+1+c]
+            return torch.softmax(self.betas[self.task, self.task:self.task+1+self.num_comm_masks], dim=-1)
+        else: 
+            #return self.betas[self.task, 0:self.task+1+c]
+            return torch.softmax(self.betas[task, :], dim=-1)
 
 
 # Subnetwork forward from hidden networks

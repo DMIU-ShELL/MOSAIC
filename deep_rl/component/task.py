@@ -402,9 +402,14 @@ class MetaCTgraph(BaseTask):
             for idx in range(len(self.tasks)):
                 self.tasks[idx]['task_label'] = labels[idx]
 
+        [print(task) for task in tasks]
+        print(len(tasks))
+
+
         if 'filter_tasks' in env_meta_config.keys():
             filtered_tasks = []
             for idx_ in env_meta_config['filter_tasks']:
+                print(idx_)
                 filtered_tasks.append(self.tasks[idx_])
             self.tasks_ = self.tasks
             self.tasks = filtered_tasks
@@ -431,6 +436,7 @@ class MetaCTgraph(BaseTask):
         return state
 
     def reset_task(self, taskinfo):
+        print(taskinfo)
         self.set_task(taskinfo)
         return self.reset()
 
@@ -462,14 +468,12 @@ class MetaCTgraphFlatObs(MetaCTgraph):
         self.state_dim = int(np.prod(self.env.observation_space.shape))
 
     def step(self, action):
-        state, reward, done, truncated, info = self.env.step(action)
-        if done or truncated:
-            state = self.reset()
-            done = done or truncated
+        state, reward, done, info = self.env.step(action)
+        if done: state = self.reset()
         return state.ravel(), reward, done, info
 
     def reset(self):
-        state, info = self.env.reset()
+        state = self.env.reset()
         return state.ravel()
 
 class MiniGrid(BaseTask):
@@ -500,6 +504,7 @@ class MiniGrid(BaseTask):
         else: raise ValueError('invalid seed specification in config file')
         self.envs = {'{0}_seed{1}'.format(name, seed) : \
             ReseedWrapper(ImgObsWrapper(gym.make(name)), seeds=[seed,]) \
+            
             for name, seed in zip(env_names, seeds)}
         env_names = ['{0}_seed{1}'.format(name, seed) for name, seed in zip(env_names, seeds)]
         #self.envs = {name: TimeLimit(env, MiniGrid.TIME_LIMIT) for name, env in self.envs.items()}

@@ -184,7 +184,7 @@ class FCBody_SS(nn.Module): # fcbody for supermask superposition continual learn
         return x, ret_act
 
 class FCBody_SS_Comp(nn.Module): # fcbody for supermask superposition continual learning algorithm
-    def __init__(self, state_dim, task_label_dim=None, hidden_units=(64, 64), gate=F.relu, discrete_mask=True, num_tasks=3, new_task_mask=NEW_MASK_RANDOM, seed=1):
+    def __init__(self, state_dim, task_label_dim=None, hidden_units=(64, 64), gate=F.relu, discrete_mask=True, num_tasks=3, new_task_mask=NEW_MASK_RANDOM, seed=1, use_naive_blc=False):
         super(FCBody_SS_Comp, self).__init__()
         print("\n\n\n\nSTATE_DIM", state_dim)
         if task_label_dim is None:
@@ -193,7 +193,7 @@ class FCBody_SS_Comp(nn.Module): # fcbody for supermask superposition continual 
             dims = (state_dim + task_label_dim, ) + hidden_units
 
         self.layers = nn.ModuleList([CompBLC_MultitaskMaskLinear(dim_in, dim_out, discrete=discrete_mask, \
-            num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed) \
+            num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc) \
             for dim_in, dim_out in zip(dims[:-1], dims[1:])
         ])
         self.gate = gate
@@ -314,13 +314,13 @@ class ConvBody_SS(nn.Module): # conv body for supermask lifelong learning algori
         return x, ret_act'''
     
 class ConvBody_SS_Modified(nn.Module): # conv body for supermask lifelong learning algorithm
-    def __init__(self, state_dim, kernels=[(3,3), (3,3)], strides=[1,1], paddings=[1,1], feature_dim=512, task_label_dim=None, gate=F.relu, discrete_mask=True, num_tasks=3, new_task_mask=NEW_MASK_RANDOM, seed=1):
+    def __init__(self, state_dim, kernels=[(3,3), (3,3)], strides=[1,1], paddings=[1,1], feature_dim=512, task_label_dim=None, gate=F.relu, discrete_mask=True, num_tasks=3, new_task_mask=NEW_MASK_RANDOM, seed=1, use_naive_blc=False):
         super(ConvBody_SS_Modified, self).__init__()
 
         print('State dim: ',state_dim)
         in_channels = 1#state_dim[2] # assumes state_state with dim: num_channels x height x width
-        self.conv1 = ComposeMultitaskMaskConv2d(in_channels, 16, kernel_size=8, stride=4, padding=0, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed)
-        self.conv2 = ComposeMultitaskMaskConv2d(16, 32, kernel_size=4, stride=2, padding=0, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed)
+        self.conv1 = ComposeMultitaskMaskConv2d(in_channels, 16, kernel_size=8, stride=4, padding=0, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
+        self.conv2 = ComposeMultitaskMaskConv2d(16, 32, kernel_size=4, stride=2, padding=0, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
         
         '''if task_label_dim is None: dims = (state_dim[0], ) + hidden_units
         else: dims = (state_dim[0] + task_label_dim, ) + hidden_units
@@ -345,7 +345,7 @@ class ConvBody_SS_Modified(nn.Module): # conv body for supermask lifelong learni
         self.flatten = nn.Flatten()
         flattened_in = 32 * max(state_dim) * min(state_dim)
         #self.fc = CompBLC_MultitaskMaskLinear(64 * 7 * 7, feature_dim, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed)
-        self.fc = CompBLC_MultitaskMaskLinear(32 * 16 * 16, feature_dim, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed)
+        self.fc = CompBLC_MultitaskMaskLinear(32 * 16 * 16, feature_dim, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
 
         self.gate = gate
         self.feature_dim = feature_dim

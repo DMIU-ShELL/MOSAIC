@@ -174,7 +174,7 @@ class ActorCriticNetSS(nn.Module):
         self.phi_params = [p for p in self.phi_body.parameters() if p.requires_grad is True]
 
 class ActorCriticNetSSComp(nn.Module):
-    def __init__(self, state_dim, action_dim, phi_body, actor_body, critic_body, num_tasks, new_task_mask, discrete_mask=True, seed=1):
+    def __init__(self, state_dim, action_dim, phi_body, actor_body, critic_body, num_tasks, new_task_mask, discrete_mask=True, seed=1, use_naive_blc=False):
         super(ActorCriticNetSSComp, self).__init__()
         if phi_body is None: phi_body = DummyBody(state_dim)
         if actor_body is None: actor_body = DummyBody(phi_body.feature_dim)
@@ -183,8 +183,8 @@ class ActorCriticNetSSComp(nn.Module):
         self.actor_body = actor_body
         self.critic_body = critic_body
 
-        self.fc_action = CompBLC_MultitaskMaskLinear(actor_body.feature_dim, action_dim, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed)
-        self.fc_critic = CompBLC_MultitaskMaskLinear(critic_body.feature_dim, 1, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed)
+        self.fc_action = CompBLC_MultitaskMaskLinear(actor_body.feature_dim, action_dim, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
+        self.fc_critic = CompBLC_MultitaskMaskLinear(critic_body.feature_dim, 1, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
 
         ap = [p for p in self.actor_body.parameters() if p.requires_grad is True]
         ap += [p for p in self.fc_action.parameters() if p.requires_grad is True]
@@ -623,9 +623,10 @@ class CategoricalActorCriticNet_SS_Comp(nn.Module, BaseNet):
                  critic_body=None,
                  num_tasks=3,
                  new_task_mask='random',
-                 seed=1):
+                 seed=1,
+                 use_naive_blc=False):
         super(CategoricalActorCriticNet_SS_Comp, self).__init__()
-        self.network = ActorCriticNetSSComp(state_dim, action_dim, phi_body, actor_body, critic_body, num_tasks, new_task_mask, seed=seed)
+        self.network = ActorCriticNetSSComp(state_dim, action_dim, phi_body, actor_body, critic_body, num_tasks, new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
         self.task_label_dim = task_label_dim
         self.to(Config.DEVICE)
 
