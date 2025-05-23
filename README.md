@@ -1,41 +1,61 @@
-# C3L 
-C3L (Continual Composition Collective Learning) is a [ShELL (Shared Experience Lifelong Learning)](https://rdcu.be/dB9zt) system that uses functional composition of knowledge from various sources within the collective, to promote knowledge reuse, accelerate learning and improve adapatability.
-ShELL encapsulates an emerging class of distributed lifelong learning systems where each agent is a lifelong learner capable of sharing and receiving knowledge about tasks from other agents.
+# MOSAIC
 
-## Agent Description
-Each lifelong learner agent is a [PPO](https://arxiv.org/abs/1707.06347) controller combined with [Modulating Masks](https://arxiv.org/abs/2212.11110) algorithm for knowledge preservation across tasks.
-Basline agents is a regular [PPO](https://arxiv.org/abs/1707.06347) controller. No knowledge preservation algorithm is present, hence it catastrophically forgets.
+**MOSAIC (Modular Sharing and Composition in Collective Learning)** is a decentralized, asynchronous, and collaborative reinforcement learning system that enables autonomous agents to identify, share, and reuse modular knowledge. It uses task similarity and reward-based heuristics to allow agents to independently select, learn and act in RL environments. MOSAIC improves learning speed, task generalization, and scalability without centralized coordination.
 
-## Evaluation Domain
-Agent-based (reinforcement) learning. The DMIU code is built on top of existing [DeepRL](https://github.com/ShangtongZhang/DeepRL) repository. The repository is extended on three front
-1. Extension of RL agents to lifelong learning framework, methods and experiments.
-2. Extension of 1. to shared experience lifelong learning framework.
-3. Extension of 2. for functional composition via Wasserstein task embedding similarity metrics.
+This work is inspired and supported by the work conducted in [ShELL (Shared Experience Lifelong Learning)](https://rdcu.be/dB9zt).
 
-Sample environments: [Minigrid](https://github.com/Farama-Foundation/gym-minigrid), [CT-graph](https://github.com/soltoggio/CT-graph), [Procgen](https://github.com/openai/procgen)
+## Overview
+
+MOSAIC belongs to a novel paradigm of distributed AI systems where each agent is an independent learner capable of collaboration via sharing of knowledge. These agents communicate peer-to-peer, exchange task embeddings, and combine learned knowledge through modular neural masks guided by Wasserstein task similarity.
+
+### Key Features
+
+- Modular policy composition via neural masks.
+- Task similarity estimation using Wasserstein embeddings.
+- Asynchronous knowledge exchange guided by performance and similarity.
+- Full support for decentralized, scalable training across tasks and environments.
+
+## Agent Architecture
+
+Each agent in MOSAIC:
+- Utilizes [PPO (Proximal Policy Optimization)](https://arxiv.org/abs/1707.06347) for reinforcement learning.
+- Implements [Modulating Masks](https://arxiv.org/abs/2212.11110) to represent and isolate task-specific knowledge.
+- Dynamically selects and blends external knowledge from peer agents via a two-phase heuristic protocol (similarity + performance).
+
+Baseline agents are PPO-only and prone to catastrophic forgetting.
+
+## Supported Environments
+
+- [MiniGrid](https://github.com/Farama-Foundation/gym-minigrid)
+- [CT-graph](https://github.com/soltoggio/CT-graph)
+- [Procgen](https://github.com/openai/procgen)
 
 ## Requirements
-- Same as the requirements of the [DeepRL](https://github.com/ShangtongZhang/DeepRL) repository.
-- [Minigrid](https://github.com/Farama-Foundation/gym-minigrid) if running minigrid experiments.
-- [CT-graph](https://github.com/soltoggio/CT-graph) if running CT-graph experiments.
-- [Procgen](https://github.com/openai/procgen) if running Procgen experiments.
 
-- A full list of packages used in this codebase can be found in the ./ymls folder. These ymls can be used to create suitable Conda environments.
+- Requirements from [DeepRL](https://github.com/ShangtongZhang/DeepRL)
+- Additional:
+  - `gym-minigrid`
+  - `ctgraph`
+  - `minihack`
+- Environment setup YAMLs are located in `./ymls/`
 
 ## Usage
-To run a single C3L agent on [Minigrid](https://github.com/Farama-Foundation/gym-minigrid).
+
+### Run a Single Agent
+To run a single C3L agent on Minigrid.
+
 ```
-python run_minigrid.py <curriculum index> <listening port> -p <experiment folder name>
+python run_minigrid.py <curriculum index> <port> -p <experiment name>
 ```
 - The curriculum index tells the agent which curriculum of tasks to select for learning in the experiment.
 - The listening port defines which port the server will listen on for incoming communication.
 - The -p argument is optional and will default to the environment name.
 
 
-[CT-graph](https://github.com/soltoggio/CT-graph) and [Procgen](https://github.com/openai/procgen) experiments can be run using run_mctgraph.py and run_procgen.py
+CT-graph and MiniHack experiments can be run using run_mctgraph.py and run_procgen.py
 
-
-To run a multi-agent experiment.
+### Run a distributed experiment
+To run a multi-agent experiment with multiple agents, each with their own environment.
 ```
 python launcher.py --env minigrid --exp <experiment folder name>
 ```
@@ -43,8 +63,13 @@ python launcher.py --env minigrid --exp <experiment folder name>
 - The --exp argument defines the name of the folder in which the experiment data will be contained.
 - The launcher.py file is setup to use CUDA_VISIBLE_DEVICES to define the GPU used by the agent. Our experiments have been run on Nvidia A100s using MiG configurations.
 
+### Setting up communication
+Ensure that the references.csv file contains the IPs and ports for your agents. 
+```
+<ip>, <port>
+```
 
-To run multiple agents on localhost, first check that the references.csv file contains the IPs and ports for your agents. By default this should look similar to this:
+By default reference.csv file contains:
 
 ```
 127.0.0.1, 29500
@@ -54,16 +79,9 @@ To run multiple agents on localhost, first check that the references.csv file co
 127.0.0.1, 29504
 127.0.0.1, 29505
 ```
-To run two agents on localhost simply run the following commands on two seperate terminals. NOTE: that the curriculum index acts as an index value for the selection of a curriculum from the provided shell.json configuration file. It is also used to create directories for each agent's logs.
-```
-Terminal 1:
-python run_minigrid.py <curriculum index> <port value> -l
 
-Terminal 2:
-python run_minigrid.py <curriculum index> <port value> -l
-```
-
-To run multiple agents on seperate devices, please update the addresses.csv file to contain the IPs and ports for ALL of your devices. For example:
+### Running on multiple devices
+To run multiple agents on seperate devices, please update the addresses.csv file. This can contain one or more ip ports of other agents. For example:
 ```
 xxx.xxx.x.x, 29500
 xxx.xxx.x.x, 29501
@@ -91,23 +109,13 @@ Additional parameters are also available in the system
 ```
 
 ### Configuring environments/curriculum
-Curriculums and environments can be modified from the shell.json file. This file contains the curriculum for each agent by
-
-Note: Minigrid (with 3 simple crossing tasks) is specified as the default environment/tasks in `shell.json`. To run CT-graph experiments, update `shell.json` as shown below, or alternatively use the shell2x2, shell4x4, shell8x8, shell16x16, and shell32x32 JSON files. Numbers indicate the maximum number of agents and the number of tasks the JSONs are configured for. You may wish to use a smaller number of agents with more tasks. Currently, the maximum number of tasks configured for the CT-graph by default is 32 though this can be modified. Please get in touch with us if you would like to experiment with different CT-graph configurations.
-```
-...
-"env": {
-    "env_name": "ctgraph",
-    "env_config_path": "./env_configs/meta_ctgraph.json"
-}
-...
-```
+Curriculums and environments can be modified from the shell.json files in shell_configs/. This file contains the curriculum for each agent. Per-environment specifications can be found in env_configs/.
 
 ## Maintainers
 The repository is currently developed and maintained by researchers from Loughborough University, Vanderbilt University, UC Riverside, and UT Dallas
 
 ## Bug Reporting
-If you encounter any bugs using the code, please raise an issue in the repository on GitHub.
+If you encounter any bugs using the code or have any questions, please raise an issue in the repository on GitHub.
 
 ## Acknowledgement
 This material is based upon work supported by the United States Air Force Research Laboratory (AFRL) and Defense Advanced Research Projects Agency (DARPA) under Contract No. HR00112190132.

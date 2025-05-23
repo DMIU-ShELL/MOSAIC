@@ -22,16 +22,14 @@ from deep_rl.utils.torch_utils import set_one_thread, random_seed, select_device
 from deep_rl.utils.config import Config
 from deep_rl.utils.normalizer import ImageNormalizer, RescaleNormalizer, RunningStatsNormalizer, RewardRunningStatsNormalizer
 from deep_rl.utils.logger import get_logger
-from deep_rl.utils.trainer_shell import trainer_learner, trainer_evaluator
+from deep_rl.utils.trainer_shell import trainer_learner
 from deep_rl.component.policy import SamplePolicy
 from deep_rl.component.task import ParallelizedTask, MiniGridFlatObs, MetaCTgraphFlatObs, ContinualWorld, MiniGrid, MetaCTgraph
 from deep_rl.network.network_heads import CategoricalActorCriticNet_SS, GaussianActorCriticNet_SS, CategoricalActorCriticNet_SS_Comp
 from deep_rl.network.network_bodies import FCBody_SS, DummyBody_CL, FCBody_SS_Comp
 from deep_rl.agent.PPO_agent import PPODetectShell, PPOShellAgent
-from deep_rl.agent.SAC_agent import SACDetectShell, SACShellAgent
 
-from deep_rl.shell_modules.communication.comms import ParallelComm, ParallelCommEval, ParallelCommOmniscient
-from deep_rl.shell_modules.communication.comms import ParallelCommDetect, ParallelCommDetectEval
+from deep_rl.shell_modules.communication.comms import ParallelCommDetect
 from deep_rl.shell_modules.detect.detect import Detect
 
 import argparse
@@ -116,7 +114,7 @@ def setup_configs_and_logs(config, args, shell_config, global_config):
         num_tasks = len(set(shell_config['curriculum']['task_ids']))
     else:
         num_tasks = len(shell_config['curriculum']['task_paths'])
-
+    print('NUMBER OF TASKS:',num_tasks)
     config.cl_num_tasks = num_tasks
     config.task_paths, config.task_ids = None, None
     if 'task_paths' in shell_config['curriculum']:
@@ -143,7 +141,7 @@ def detect_finalise_and_run(config, Agent):
     ###############################################################################
     # Setup detect module
     #Passing the Detect Module in the config object of the Agent OPTIONAL COULD BE USED BY THE TRAINER ONLY
-    config.detect_fn = lambda reference_num, input_dim, num_samples: Detect(reference_num, input_dim, num_samples, one_hot=True, normalized=True)
+    config.detect_fn = lambda reference_num, input_dim, action_dim, num_samples: Detect(reference_num, input_dim, action_dim, num_samples, one_hot=True, normalized=True)
 
 
     ###############################################################################
@@ -295,7 +293,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('curriculum_id', help='index of the curriculum to use from the shell config json', type=int)                   # NOTE: REQUIRED Used to create the logging filepath and select a specific curriculum from the shell configuration JSON.
     parser.add_argument('port', help='port to use for this agent', type=int)                                            # NOTE: REQUIRED Port for the listening server.
-    parser.add_argument('--shell_config_path', help='shell config', default='./shell_configs/the_chosen_one/mg_mt.json')                         # File path to your chosen shell.json configuration file. Changing the default here might save you some time.
+    parser.add_argument('--shell_config_path', help='shell config', default='./shell_configs/paper_experiments/mg_mt.json')                         # File path to your chosen shell.json configuration file. Changing the default here might save you some time.
     parser.add_argument('--exp_id', help='id of the experiment. useful for setting '\
         'up structured directory of experiment results/data', default='upz', type=str)                                  # Experiment ID. Can be useful for setting up directories for logging results/data.
     parser.add_argument('--eval', '--e', '-e', help='launches agent in evaluation mode', action='store_true')           # Flag used to start the system in evaluation agent mode. By default the system will run in learning mode.

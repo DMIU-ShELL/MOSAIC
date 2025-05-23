@@ -182,13 +182,10 @@ def _shell_itr_log_mw(logger, agent, agent_idx, itr_counter, task_counter, dict_
 shell training: concurrent processing for event-based communication. a multitude of improvements have been made compared
 to the previous shell_dist_train.
 '''
-#@profile
 def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     ###############################################################################
     ### Setup logger
     logger = agent.config.logger
-    #print(Fore.WHITE, end='') 
-    #logger.info('***** start l2d2-c training')
 
 
     ###############################################################################
@@ -196,16 +193,10 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     shell_done = False
     shell_iterations = 0
     shell_tasks = agent.config.cl_tasks_info # tasks for agent
-    #shell_task_ids = agent.config.task_ids
     shell_task_counter = 0
-    #shell_eval_tracker = False
     shell_eval_data = []
     num_eval_tasks = len(agent.evaluation_env.get_all_tasks())
     shell_eval_data.append(np.zeros((num_eval_tasks, ), dtype=np.float32))
-    #shell_metric_icr = [] # icr => instant cumulative reward metric. NOTE may be redundant now
-    #eval_data_fh = open(logger.log_dir + '/eval_metrics_agent_{0}.csv'.format(agent_id), 'a', 
-    #    buffering=1) # buffering=1 means flush data to file after every line written
-    #shell_eval_end_time = None
 
     idling = True   # Flag to handle idling behaviour when curriculum ends.
     dict_to_query = None      # Variable to store the current task dictionary recrod to query for.
@@ -224,21 +215,13 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
     ### Set the first task each agent is meant to train on
     states_ = agent.task.reset_task(shell_tasks[0])
     agent.states = agent.config.state_normalizer(states_)
-    #logger.info(f'***** ENVIRONMENT SWITCHING TASKS')
-    #logger.info(f'***** agent {agent_id} / setting first task (task 0)')
-    #logger.info(f"***** task: {shell_tasks[0]['task']}")
-    #logger.info(f"***** task_label: {shell_tasks[0]['task_label']}")
-
-    # Set first task mask and record manually otherwise we run into issues with the implementation in the model.
-    #agent.task_train_start_emb(task_embedding=None)
 
     # NOTE: ADDED detect.add_embedding() to accomodate the WEIGHTED AVG COSINE SIM
     agent.current_task_emb = torch.zeros(agent.get_task_emb_size())
     if agent.config.continuous == True:
-        agent.task_train_start_emb(task_embedding=agent.current_task_emb, current_reward=agent.iteration_success_rate)   # TODO: There is an issue with this which is that the first task will be set as zero and then the detect module with do some learning, find that the task does not match the zero embedding and start another task change. This leaves the first entry to a task change as useless. Also issues if we try to moving average this
+        agent.task_train_start_emb(task_embedding=agent.current_task_emb, current_reward=agent.iteration_success_rate)
     else:
         agent.task_train_start_emb(task_embedding=agent.current_task_emb, current_reward=agent.iteration_rewards)
-    #agent.detect.add_embedding(agent.current_task_emb, np.mean(agent.iteration_rewards))
     del states_
 
 
@@ -273,14 +256,11 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         """
         while True:
             masks_list  = queue_mask.get()
-            
-            #logger.info(Fore.WHITE + f'\n######### MASK RECEIVED FROM COMM #########')
 
             _masks = []
             _avg_embeddings = []
             _avg_rewards = []
             _mask_labels = []
-            #print(f'masks list length: {len(masks_list)}')
 
             try:
                 if len(masks_list) > 0:
@@ -293,55 +273,33 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                         ip = mask_response_dict['ip']
                         port = mask_response_dict['port']
 
-                        #print(type(label), len(label), label)
-
-                        #_masks.append(mask)
                         _masks.append(agent.vec_to_mask(mask.to(agent.config.DEVICE))) # Use this one if using unified LC
                         _avg_embeddings.append(embedding)
                         _avg_rewards.append(reward)
                         _mask_labels.append(label)
 
                         # Log successful mask transfer
-                        data = [
-                            {
-                                'iteration': shell_iterations,
-                                'ip': ip,
-                                'port': port,
-                                'task_id': np.argmax(label,axis=0),
-                                'reward': reward,
-                                'embedding': embedding,
-                                'mask_dim': len(mask),
-                                'mask_tensor': mask
-                            }
-                        ]
+                        data = [{
+                            'iteration': shell_iterations,
+                            'ip': ip,
+                            'port': port,
+                            'task_id': np.argmax(label,axis=0),
+                            'reward': reward,
+                            'embedding': embedding,
+                            'mask_dim': len(mask),
+                            'mask_tensor': mask
+                        }]
                     
                         df = pd.DataFrame(data)
                         df.to_csv(masks_log_path, mode='a', header=not pd.io.common.file_exists(masks_log_path), index=False)
 
-
-                        #exchanges.append([shell_iterations, ip, port, np.argmax(label, axis=0), reward, embedding, len(mask), mask])
-                        #np.savetxt(logger.log_dir + '/exchanges_{0}.csv'.format(agent_id), exchanges, delimiter=',', fmt='%s')
-                    
-                    #logger.info(Fore.WHITE + f'Updating seen tasks dictionary with new data')
-                    # Update the knowledge base with the expected reward
-                    #agent.update_seen_tasks(_avg_embeddings[0], _avg_rewards[0], _mask_labels[0])#knowledge_base.update({tuple(label.tolist()): reward})
-                    
-                    # Traceback (most recent call last):
-                    # File "/home/lunet/cosn2/detect-l2d2c/deeprl-shell/deep_rl/utils/trainer_shell.py", line 671, in mask_handler
-                    #     agent.update_seen_tasks(_avg_embeddings[0], _avg_rewards[0], _mask_labels[0])
-                    # IndexError: list index out of range
-
                     logger.info(Fore.WHITE + f'COMPOSING RECEIVED MASKS')
-                    # Update the network with the linearly combined mask
-                    #agent.distil_task_knowledge_embedding(_masks[0])       # This will only take the first mask in the list
-                    #agent.consolidate_incoming(_masks)                      # This will take all the masks in the list and linearly combine with the random/current mask
                     if agent.config.continuous == True:
                         agent.update_community_masks(_masks, np.mean(agent.iteration_success_rate))
                     else:
                         agent.update_community_masks(_masks, np.mean(agent.iteration_rewards))
                     _masks = []
 
-                    #logger.info(Fore.WHITE + 'COMPOSED MASK ADDED TO NETWORK!')
             except Exception as e:
                 traceback.print_exc()
 
@@ -359,9 +317,6 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                 sender_task_id = to_convert['sender_task_id']
                 mask = agent.idx_to_mask(sender_task_id)
 
-                #print(sender_task_id)
-                #print(agent.seen_tasks[sender_task_id])
-
                 reward = agent.seen_tasks[sender_task_id]['reward']
                 emb = agent.seen_tasks[sender_task_id]['task_emb']
                 label = agent.seen_tasks[sender_task_id]['ground_truth']
@@ -372,6 +327,7 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                 to_convert['response_embedding'] = emb
                 to_convert['response_label'] = label
                 queue_mask_recv.put((to_convert))
+
             except Exception as e:
                 traceback.print_exc()
     
@@ -397,23 +353,13 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                 print('Agent is idling...') # Once idling the agent acts as a server that can be queried for knowledge until the agent encounters a new task (support not implemented yet)
                 
                 # Log all the embeddings and labels to tensorboard projector
-                # NOTE: RE-ENABLE FOR MAIN EXPERIMENTS!!!!!!!!!!!!!
                 #emb_t = torch.stack(tuple(_embeddings))
                 #tb_writer_emb.add_embedding(emb_t, metadata=_labels, global_step=shell_iterations)
                 #agent.env.close()
-                
                 idling = False
-                # Alternatively we can shutdown the agent here or do something for the experiment termination.
-                
-            #if omniscient_mode:
-            #    if shell_iterations % mask_interval == 0:
-            #        queue_label.put(None)
-
-            #    shell_iterations += 1
 
             time.sleep(2) # Sleep value ensures the idling works as intended (fixes a problem encountered with the multiprocessing)
             continue
-        #print()
 
 
         
@@ -428,13 +374,6 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         ###############################################################################
         ### Query for knowledge using communication process. Send label/embedding to the communication module to query for relevant knowledge from other peers.
         if dict_to_query is not None:
-            #print('Entropy:', np.mean(dict_logs['entropy']))
-            #print('Reward:', np.mean(agent.iteration_rewards))
-            #if agent.config.continuous == True:
-            #    mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_success_rate, agent.task.action_space.n)
-            #else:
-            #    mask_interval = adaptive_communication_interval(np.mean(dict_logs['entropy']), agent.iteration_rewards, agent.task.action_space.n)
-
             if shell_iterations % mask_interval == 0:
                 # Approach 2: At this point consolidate masks and then we can reset beta parameters. Then we can get new masks from network and combine.
                 dict_to_query['shell_iteration'] = shell_iterations
@@ -726,33 +665,3 @@ def run_detect_module(agent):
 
     # Return all data
     return task_change_detected, new_embedding, ground_truth_task_label, distances, emb_bool, agent_seen_tasks
-
-def adaptive_communication_interval(policy_entropy, recent_returns, lambda_base=20, alpha=4, beta=10):
-    """
-    Dynamically adjusts the communication interval based on policy entropy and return change.
-
-    - High entropy (H) => frequent communication (low interval)
-    - Large return improvement (Δr) => allows more communication
-    - Low entropy & stable returns => longer intervals (less communication)
-    
-    Args:
-        policy_entropy (float): Current policy entropy (0 to 1).
-        recent_returns (list): List of recent episodic returns.
-        lambda_base (int): Base interval factor (higher = less frequent communication).
-        alpha (float): Scaling factor for entropy decay.
-        beta (float): Scaling factor for return influence.
-
-    Returns:
-        int: Adjusted communication interval.
-    """
-
-    # Compute return difference (Δr), default to large value if not enough history
-    delta_r = (recent_returns[-1] - recent_returns[-2]) if len(recent_returns) > 1 else 1.0
-
-    # Ensure delta_r is non-negative for log scaling
-    delta_r = max(delta_r, 1e-6)
-
-    # Compute adaptive communication interval
-    comm_interval = lambda_base * np.exp(-alpha * policy_entropy) + beta * np.log(1 + delta_r)
-
-    return int(np.clip(comm_interval, 5, 200))

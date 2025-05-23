@@ -197,18 +197,7 @@ def detect_finalise_and_run(config, Agent):
     trainer_learner(agent, comm, args.curriculum_id, config.manager, config.querying_frequency, config.mode)
 
 
-'''
-Lifelong Learning Distributed and Decentralised (L2D2-C) experiments
-Multi-agent continual lifelong learners
 
-Developed as part of work supported by the Defense Advanced Research Projects Agency
-(DARPA) under contract no. HR00112190132 (Shared Experience Lifelong Learning).
-
-Each agent is based on ppo and the modulating masks
-lifelong reinforcement learning algorithm.
-https://arxiv.org/abs/2212.11110
-'''
-# main experiment methods. currently implemented: meta-ctgraph with ppo. TODO: Implement evaluation agents with task labels instead of embeddings
 def mctgraph_ppo(name, args, shell_config):
     # Initialise config object
     config = Config()
@@ -280,10 +269,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('curriculum_id', help='index of the curriculum to use from the shell config json', type=int)                   # NOTE: REQUIRED Used to create the logging filepath and select a specific curriculum from the shell configuration JSON.
     parser.add_argument('port', help='port to use for this agent', type=int)                                            # NOTE: REQUIRED Port for the listening server.
-    parser.add_argument('--shell_config_path', help='shell config', default='./shell_configs/the_chosen_one/ct28_2_dist_multi.json')                         # File path to your chosen shell.json configuration file. Changing the default here might save you some time.
+    parser.add_argument('--shell_config_path', help='shell config', default='./shell_configs/paper_experiments/ct28_2_dist_multi.json')                         # File path to your chosen shell.json configuration file. Changing the default here might save you some time.
     parser.add_argument('--exp_id', help='id of the experiment. useful for setting '\
         'up structured directory of experiment results/data', default='upz', type=str)                                  # Experiment ID. Can be useful for setting up directories for logging results/data.
-    parser.add_argument('--eval', '--e', '-e', help='launches agent in evaluation mode', action='store_true')           # Flag used to start the system in evaluation agent mode. By default the system will run in learning mode.
     parser.add_argument('--omni', '--o', '-o', help='launches agent in omniscient mode. omniscient agents use the '\
         'gather all querying method to gather all knowledge from the network while still operating as a functional '\
             'learning agent', action='store_true')                                                                      # Flag used to start the system in omniscient agent mode. By default the system will run in learning mode.
@@ -331,11 +319,7 @@ if __name__ == '__main__':
     # Parse arguments and launch the correct environment-agent configuration.
     if shell_config['env']['env_name'] == 'ctgraph':
         name = Config.ENV_METACTGRAPH
-        if args.eval:
-            mctgraph_ppo_eval(name, args, shell_config)
-
-        else:
-            mctgraph_ppo(name, args, shell_config)
+        mctgraph_ppo(name, args, shell_config)
 
     else:
         raise ValueError('--env_name {0} not implemented'.format(args.env_name))

@@ -9,35 +9,19 @@
 #                                                 (╯°□°)╯︵ ┻━┻
 from colorama import Fore
 from copy import deepcopy
-import datetime
 import multiprocessing as mp
 import multiprocessing.dummy as mpd
-import os
-import sys
 import pickle
 import socket
-import ssl
 import struct
 import time
 from errno import ECONNRESET
-from queue import Empty
-from itertools import cycle
 import urllib.request
-from random import shuffle, uniform
 import torch.nn.functional as F
-
 import numpy as np
 import torch
 import traceback
-import ipinfo
 import pandas as pd
-
-
-from scipy.spatial.distance import cdist, pdist, squareform
-from scipy.stats import wasserstein_distance as wd
-import json
-
-
 
 
 class ParallelCommDetect(object):
@@ -178,63 +162,7 @@ class ParallelCommDetect(object):
 
         else:
             return False
-
-    '''###############################################################################
-    ### 
-    def proc_meta(self, other_agent_req):
-        """
-        Processes a query for an embedding and produces a response to send back to the requesting agent.
         
-        Args:
-            other_agent_req: A dictionary containing the information for the query request.
-        
-        Returns:
-            meta_response: A dictionary containing the response information.
-        """
-
-        if other_agent_req is not None:
-            other_agent_req['response'] = False
-            embedding = other_agent_req['embedding'].detach().cpu().numpy()
-            sender_reward = other_agent_req['sender_reward']
-
-            # Iterate through the knowledge base and compute the distances
-            for tlabel, treward in self.knowledge_base.items():
-                if treward > 0.0:
-                    if 0.9 * treward > sender_reward:
-                        tdist = float(torch.linalg.vector_norm(embedding - torch.squeeze(torch.tensor(tlabel))))
-                        self.logger.info(f'{tdist} meta distance')
-                        if tdist <= self.threshold:
-                            other_agent_req['response'] = True
-                            other_agent_req['reward'] = treward
-                            other_agent_req['dist'] = tdist
-                            other_agent_req['resp_embedding'] = torch.squeeze(torch.tensor(tlabel))
-
-        return other_agent_req
-    def send_meta(self, meta_resp):
-        if meta_resp and meta_resp['response']:
-            data = [
-                self.init_address,
-                self.init_port,
-                ParallelCommDetect.MSG_TYPE_SEND_META,
-                ParallelCommDetect.MSG_DATA_META,
-                meta_resp.get('reward', None),
-                meta_resp.get('dist', None),
-                meta_resp.get('resp_embedding', None)
-            ]
-
-            self.client(data, str(meta_resp['sender_address']), int(meta_resp['sender_port']))
-    def send_to_agent(self, queue_mask):
-        self.logger.info(Fore.CYAN + 'Data is a mask')
-        # Unpack the received data
-        received_masks = self.recv_masks(data)
-        received_mask, received_label, received_reward, ip, port = self.recv_mask(data)
-
-        self.logger.info(f'{received_mask, received_label, received_reward, ip, port}')
-        # Send the reeceived information back to the agent process if condition met
-        if received_mask is not None and received_label is not None and received_reward is not None:
-            self.logger.info('Sending mask data to agent')
-            queue_mask.put(self.masks)'''
-
     def log_data(self, data, path):
         try:
             log_file_path = self.logger.log_dir + path
@@ -293,193 +221,7 @@ class ParallelCommDetect(object):
                 self.query_list.insert(0, addr)
 
         self.world_size.value = len(self.query_list) + 1
-
-    '''def received_query(self, data, queue_label_send, queue_mask_recv):
-        """
-        Event handler for receiving a query from another agent. Unpacks the buffer received from another agent, processes the request and sends a mask response if conditions met.
         
-        Args:
-            data: A list received from another agent.
-        """
-
-        # Query to mask response pipeline
-        def recv_query(buffer):
-            """
-            Unpacks the data buffer received from another agent for a query.
-            
-            Args:
-                buffer: A list received from another agent.
-                
-            Returns:
-                ret: A dictionary containing the unpacked data.
-            """
-            sender_address = str(buffer[ParallelCommDetect.META_INF_IDX_ADDRESS])
-            sender_port = int(buffer[ParallelCommDetect.META_INF_IDX_PORT])
-            msg_type = buffer[ParallelCommDetect.META_INF_IDX_MSG_TYPE]
-            data_type = buffer[ParallelCommDetect.META_INF_IDX_MSG_DATA]
-            embedding = buffer[ParallelCommDetect.META_INF_IDX_TASK_SZ]
-            sender_reward = buffer[ParallelCommDetect.META_INF_IDX_REWARD]
-
-            # Create a dictionary with the unpacked data
-            ret = {
-                'sender_address': sender_address,
-                'sender_port': sender_port,
-                'sender_embedding': embedding,
-                'sender_reward': sender_reward,
-            }
-
-            if msg_type == ParallelCommDetect.MSG_TYPE_SEND_QUERY:
-                sender_parameters = buffer[ParallelCommDetect.META_INF_IDX_QUERY_PARAMS]
-                ret['sender_parameters'] = sender_parameters
-
-            # Handle when receiving a query from an unknown agent
-            if (sender_address, sender_port) not in self.query_list:
-                self.client([self.init_address, self.init_port, ParallelCommDetect.MSG_TYPE_SEND_TABLE, list(self.query_list)], sender_address, sender_port)
-                self.query_list.append((sender_address, sender_port))
-
-            # Refresh the world_size value
-            self.world_size.value = len(self.query_list) + 1
-
-            return ret, msg_type
-        
-        def calculate_weighted_similarity(embedding1, embedding2, alpha=0.5, percentile=95):
-            self.logger.info(f'{embedding1}\n{embedding2}')
-            embedding1_np = np.expand_dims(np.array(embedding1), (0))
-            embedding2_np = np.expand_dims(np.array(embedding2), (0))
-            
-            cosine_sim_matrix = F.cosine_similarity(embedding1, embedding2.unsqueeze(0))
-            self.logger.info(f'{cosine_sim_matrix}')
-            cosine_sim_matrix = (cosine_sim_matrix + 1) / 2
-            self.logger.info(f'{cosine_sim_matrix}')
-
-            euclidean_distances = cdist(embedding1_np, embedding2_np, metric='euclidean')
-            self.logger.info(f'{euclidean_distances}')
-
-            combined_embeddings = np.vstack([embedding1_np, embedding2_np])
-            D_max = np.linalg.norm(embedding2) + 1e-8#np.percentile(pdist(combined_embeddings, metric='euclidean'), percentile)
-            self.logger.info(f'{combined_embeddings}')
-            self.logger.info(f"{pdist(combined_embeddings, metric='euclidean')}")
-            self.logger.info(f'{D_max}')
-
-            euclidean_sim_matrix = 1 - (euclidean_distances / D_max)
-            self.logger.info(f'{euclidean_sim_matrix}')
-            #euclidean_sim_matrix = np.clip(euclidean_sim_matrix, 0, 1)
-            #self.logger.info(f'{euclidean_sim_matrix}')
-
-            weighted_similarity_matrix = alpha * cosine_sim_matrix + (1 - alpha) * euclidean_sim_matrix
-            self.logger.info(f'{alpha * cosine_sim_matrix}')
-            self.logger.info(f'{1-alpha}')
-            self.logger.info(f'{(1-alpha) * euclidean_sim_matrix}')
-            self.logger.info(f'{weighted_similarity_matrix}')
-
-            return weighted_similarity_matrix
-        
-        # NOTE: When we eventually apply to lifelong learning, we will need to modify the communication module so that
-        # agents send all metadata to the querying agent, so that the querying agent can acquire information using it's
-        # own method. This way the agent gets all the best information overall rather than just the best information
-        # from each agent. Unfortunate but it needs to be done.
-        def proc_meta_embedding(query):
-            """
-            Find the most similar task record and get the internal task id if any satisfying entries found. Create response dictionary and return otherwise return NoneType.
-            
-            Args:
-                query: A dictionary consisting of the response information to send to a specific agent.
-
-            Returns:
-                The mask_req dictionary with the converted mask now included.
-            """
-            target_embedding = query['sender_embedding']
-            target_reward = query['sender_reward']
-            target_cosine_threshold = query['sender_parameters']
-            target_port = query['sender_port']
-
-            self.logger.info(f'Sender emb: {target_embedding}, Sender rw: {target_reward}')
-
-            # Extract embeddings and rewards from the data_dict
-            embeddings = []
-            rewards = []
-            labels = []
-
-            # Get all embeddings/rewards from the knowledge base
-            for key, value in self.seen_tasks.items():
-                #if ('task_emb' in value and value['reward'] > 0) or self.no_reward:
-                known_embedding = value['task_emb']
-                known_reward = value['reward']
-                known_label = value['ground_truth']
-                embeddings.append(known_embedding)
-                rewards.append(known_reward)
-                labels.append(known_label)
-
-            if not embeddings:
-                self.logger.info(Fore.GREEN + "No entries satisfying the condition found.")
-                return None
-                              
-            try:
-                queries = []
-                for key in self.seen_tasks.keys():
-                    similarity = F.cosine_similarity(self.seen_tasks[key]['task_emb'], target_embedding.unsqueeze(0))
-                    #euclidean_distance = torch.norm(embeddings - target_embedding.unsqueeze(0), dim=1)      # euclidean distance between embeddings
-                    #l2_norm = torch.abs(torch.norm(embeddings, dim=1) - torch.norm(target_embedding))       # L2 norm (magnitude) between embeddings
-                    #wasserstein_distance = torch.tensor([wd(e.numpy(), target_embedding.numpy()) for e in embeddings])  # Wasserstein distance between embeddings
-                    #mahalanobis_distance = torch.sqrt(((embeddings - target_embedding.unsqueeze(0)) @ torch.inverse(torch.tensor([[1, 0.5, 0.2], [0.5, 1, 0.3], [0.2, 0.3, 1]], dtype=torch.float32)) * embeddings - target_embedding.unsqueeze(0)).sum(dim=1))
-
-                    query['response_reward'] = self.seen_tasks[key]['reward']
-                    query['response_similarity'] = similarity
-                    query['response_task_id'] = key
-                    query['response_embedding'] = self.seen_tasks[key]['task_emb']
-                    query['response_label'] = self.seen_tasks[key]['ground_truth']
-                    queries.append(query)
-                return queries
-            
-            except Exception as e:
-                self.logger.info(f'{traceback.format_exc()}')
-            
-        def send_meta(response):
-            """
-            Sends a mask response to a specific agent.
-            
-            Args:
-                mask_resp: A dictionary consisting of the information to send to a specific agent.    
-            """
-            data = [
-                self.init_address,
-                self.init_port,
-                ParallelCommDetect.MSG_TYPE_SEND_META,
-                ParallelCommDetect.MSG_DATA_META,
-                response.get('response_reward', None),
-                response.get('response_similarity', None),
-                response.get('response_embedding', None),
-                response.get('response_task_id', None),
-                response.get('response_label', None)
-            ]
-
-            self.logger.info(f'Sending metadata: {data}')
-            self.client(data, str(response['sender_address']), int(response['sender_port']))
-   
-
-        # Unpack the query from the other agent
-        try:
-            query, msg_type = recv_query(data)
-            self.logger.info(Fore.CYAN + f'Received query: {query} {msg_type}')
-            query_to_log = deepcopy(query)
-            query_to_log['sender_embedding'] = list(query_to_log['sender_embedding'])
-            self.log_data(query_to_log, '/recieved_queries.csv')
-            del query_to_log
-
-            # Get the mask with the most task similarity, if any such mask exists in the network.
-            responses = proc_meta_embedding(query)
-
-            self.logger.info(Fore.CYAN + f'Processed mask request: {responses}')
-
-            # Send metadata responses for all knowledge.
-            # NOTE: We should find a better way to send this information, as it can become quite large with the addition of lifelong learning
-            for response in responses:
-                send_meta(response)
-
-                
-        except Exception as e:
-            self.logger.info(f'{traceback.format_exc()}')'''
-    
     def received_query(self, data, queue_label_send, queue_mask_recv):
         """
         Event handler for receiving a query from another agent. Unpacks the buffer received from another agent, processes the request and sends a mask response if conditions met.
