@@ -1,7 +1,18 @@
 #######################################################################
-# Copyright (C) 2017 Shangtong Zhang(zhangshangtong.cpp@gmail.com)    #
-# Permission given to modify the code as long as you keep this        #
-# declaration at the top                                              #
+# Copyright (C) 2017 Shangtong Zhang (zhangshangtong.cpp@gmail.com)   #
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Andrea Soltoggio                                #
+#                                                                     #
+# Licensed under the Apache License, Version 2.0 (the "License");     #
+# you may not use this file except in compliance with the License.    #
+# You may obtain a copy of the License at                             #
+#     http://www.apache.org/licenses/LICENSE-2.0                      #
+#                                                                     #
+# Unless required by applicable law or agreed to in writing, software #
+# distributed under the License is distributed on an "AS IS" BASIS,   #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or     #
+# implied. See the License for the specific language governing        #
+# permissions and limitations under the License.                      #
 #######################################################################
 
 from .network_utils import *
@@ -317,29 +328,9 @@ class ConvBody_SS_Modified(nn.Module): # conv body for supermask lifelong learni
     def __init__(self, state_dim, kernels=[(3,3), (3,3)], strides=[1,1], paddings=[1,1], feature_dim=512, task_label_dim=None, gate=F.relu, discrete_mask=True, num_tasks=3, new_task_mask=NEW_MASK_RANDOM, seed=1, use_naive_blc=False):
         super(ConvBody_SS_Modified, self).__init__()
 
-        print('State dim: ',state_dim)
         in_channels = 1#state_dim[2] # assumes state_state with dim: num_channels x height x width
         self.conv1 = ComposeMultitaskMaskConv2d(in_channels, 16, kernel_size=8, stride=4, padding=0, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
         self.conv2 = ComposeMultitaskMaskConv2d(16, 32, kernel_size=4, stride=2, padding=0, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed, use_naive_blc=use_naive_blc)
-        
-        '''if task_label_dim is None: dims = (state_dim[0], ) + hidden_units
-        else: dims = (state_dim[0] + task_label_dim, ) + hidden_units
-        self.layers = nn.ModuleList(
-            [
-                ComposeMultitaskMaskConv2d(dim_in, dim_out, kernel_size=kernel, stride=stride, padding=padding, discrete=discrete_mask, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed) \
-                for dim_in, dim_out, kernel, stride, padding in zip(dims[:-1], dims[1:], kernels, strides, paddings)
-            ]
-        )
-
-        flattened_in = 128 * max(state_dim) * min(state_dim)
-        self.layers.append(CompBLC_MultitaskMaskLinear(flattened_in, feature_dim, num_tasks=num_tasks, new_mask_type=new_task_mask, seed=seed))
-
-        print(f'Network: {self.layers}')'''
-
-        #self.direction_emb = nn.Embedding(4, 4)
-        #self.mission_emb = nn.Embedding(100, 16)
-        #self.lstm = nn.LSTM(input_size=32 * 7 * 7 + 4 + 16, hidden_size=lstm_hidden_size, num_layers=1, batch_first=True)
-        #self.maxp1 = nn.MaxPool2d(kernel_size=2, stride=2)
         
         # Fully connected layer for output
         self.flatten = nn.Flatten()

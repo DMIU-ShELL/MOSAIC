@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-#   _________                                           .__                  __   .__                 
-#   \_   ___ \   ____    _____    _____   __ __   ____  |__|  ____  _____  _/  |_ |__|  ____    ____  
-#   /    \  \/  /  _ \  /     \  /     \ |  |  \ /    \ |  |_/ ___\ \__  \ \   __\|  | /  _ \  /    \ 
-#   \     \____(  <_> )|  Y Y  \|  Y Y  \|  |  /|   |  \|  |\  \___  / __ \_|  |  |  |(  <_> )|   |  \
-#    \______  / \____/ |__|_|  /|__|_|  /|____/ |___|  /|__| \___  >(____  /|__|  |__| \____/ |___|  /
-#           \/               \/       \/             \/          \/      \/                        \/ 
-#
-#                                                 (╯°□°)╯︵ ┻━┻
+#######################################################################
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Andrea Soltoggio                                #
+# Licensed under the Apache License, Version 2.0                      #
+# http://www.apache.org/licenses/LICENSE-2.0                          #
+#######################################################################
+
 from colorama import Fore
 from copy import deepcopy
 import multiprocessing as mp

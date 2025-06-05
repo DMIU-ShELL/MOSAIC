@@ -1,3 +1,10 @@
+#######################################################################
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Xinran Liu, Soheil Kolouri, Andrea Soltoggio    #
+# Licensed under the Apache License, Version 2.0                      #
+# http://www.apache.org/licenses/LICENSE-2.0                          #
+#######################################################################
+
 import numpy as np
 import ot
 import torch

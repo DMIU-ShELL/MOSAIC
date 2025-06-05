@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+#######################################################################
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Andrea Soltoggio                                #
+# Licensed under the Apache License, Version 2.0                      #
+# http://www.apache.org/licenses/LICENSE-2.0                          #
+#######################################################################
 
 class ResourceManager:
     OP_ID_DETECT = 0

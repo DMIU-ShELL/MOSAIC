@@ -1,8 +1,20 @@
 #######################################################################
-# Copyright (C) 2017 Shangtong Zhang(zhangshangtong.cpp@gmail.com)    #
-# Permission given to modify the code as long as you keep this        #
-# declaration at the top                                              #
+# Copyright (C) 2017 Shangtong Zhang (zhangshangtong.cpp@gmail.com)   #
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Andrea Soltoggio                                #
+#                                                                     #
+# Licensed under the Apache License, Version 2.0 (the "License");     #
+# you may not use this file except in compliance with the License.    #
+# You may obtain a copy of the License at                             #
+#     http://www.apache.org/licenses/LICENSE-2.0                      #
+#                                                                     #
+# Unless required by applicable law or agreed to in writing, software #
+# distributed under the License is distributed on an "AS IS" BASIS,   #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or     #
+# implied. See the License for the specific language governing        #
+# permissions and limitations under the License.                      #
 #######################################################################
+
 import copy
 from .atari_wrapper import *
 import multiprocessing as mp
@@ -484,7 +496,7 @@ class MiniGrid(BaseTask):
         from gym.wrappers import TimeLimit
         import gym_minigrid
         from gym_minigrid.wrappers import ImgObsWrapper, ReseedWrapper, ActionBonus, StateBonus
-        import CurriculumMinigrid
+        import CurriculumMinigrid.curriculumMultiRoomEnv
         
         self.wrappers_dict = {'ActionBonus': ActionBonus, 'StateBonus': StateBonus}
         with open(env_config_path, 'r') as f:
@@ -773,7 +785,6 @@ class CompoSuiteFlatObs(CompoSuite):
         state = self.env.reset()
         return state.ravel()
 
-
 class Robosuite(BaseTask):
     def __init__(self, name, env_config_path, log_dir=None, seed=1000):
         BaseTask.__init__(self)
@@ -924,15 +935,14 @@ class RobosuiteFlatObs(Robosuite):
         state, info = self.env.reset()
         return state.ravel()
 
-
-
 class MiniHack(BaseTask):
     def __init__(self, name, env_config_path, log_dir=None, seed=1000, eval_mode=False):
         BaseTask.__init__(self)     ##################
         import minihack
         import gym
         from nle import nethack
-        import CurriculumMinigrid
+        import CurriculumMinigrid.curriculumMultiRoomEnv
+        import CurriculumMinigrid.curriculumMultiRoomEnvMH
         self.name = name
         with open(env_config_path, 'r') as f:
             env_config = json.load(f)
@@ -1080,7 +1090,6 @@ class MiniHackFlatObs(MiniHack):
         state = self.env.reset()
         #state, info = self.env.reset()
         return state[list(state.keys())[0]].ravel()
-
 
 class Procgen(BaseTask):
     def __init__(self, name, env_config_path, log_dir=None, num_threads=1):
@@ -1385,8 +1394,6 @@ class MetaWorld(BaseTask):
     
     def random_tasks(self, num_tasks, requires_task_label=True):
         raise NotImplementedError
-
-
 
 class PixelAtari(BaseTask):
     def __init__(self, name, seed=0, log_dir=None,

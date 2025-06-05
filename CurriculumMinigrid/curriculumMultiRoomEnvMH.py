@@ -1,3 +1,10 @@
+#######################################################################
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Andrea Soltoggio                                #
+# Licensed under the Apache License, Version 2.0                      #
+# http://www.apache.org/licenses/LICENSE-2.0                          #
+#######################################################################
+
 from minihack.envs.minigrid import MiniGridHack
 from gym.envs.registration import register
 from gym_minigrid.envs.multiroom import MultiRoomEnv

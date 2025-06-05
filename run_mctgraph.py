@@ -1,16 +1,9 @@
 #######################################################################
-# Copyright (C) 2017 Shangtong Zhang(zhangshangtong.cpp@gmail.com)    #
-# Permission given to modify the code as long as you keep this        #
-# declaration at the top                                              #
+# Copyright (C) 2025 Saptarshi Nath, Christos Peridis,                #
+# Eseoghene Benjamin, Andrea Soltoggio                                #
+# Licensed under the Apache License, Version 2.0                      #
+# http://www.apache.org/licenses/LICENSE-2.0                          #
 #######################################################################
-
-
-#  _______                .__                        .__                             .__                       .___             
-#  \      \  __ __   ____ |  |   ____ _____ _______  |  | _____   __ __  ____   ____ |  |__     ____  ____   __| _/____   ______
-#  /   |   \|  |  \_/ ___\|  | _/ __ \\__  \\_  __ \ |  | \__  \ |  |  \/    \_/ ___\|  |  \  _/ ___\/  _ \ / __ |/ __ \ /  ___/
-# /    |    \  |  /\  \___|  |_\  ___/ / __ \|  | \/ |  |__/ __ \|  |  /   |  \  \___|   Y  \ \  \__(  <_> ) /_/ \  ___/ \___ \ 
-# \____|__  /____/  \___  >____/\___  >____  /__|    |____(____  /____/|___|  /\___  >___|  /  \___  >____/\____ |\___  >____  >
-#         \/            \/          \/     \/                  \/           \/     \/     \/       \/           \/    \/     \/ 
 
 import json
 import shutil
@@ -20,14 +13,14 @@ import multiprocessing as mp
 from deep_rl.utils.misc import mkdir, get_default_log_dir
 from deep_rl.utils.torch_utils import set_one_thread, random_seed, select_device
 from deep_rl.utils.config import Config
-from deep_rl.utils.normalizer import ImageNormalizer, RescaleNormalizer, RunningStatsNormalizer, RewardRunningStatsNormalizer
+from deep_rl.utils.normalizer import ImageNormalizer
 from deep_rl.utils.logger import get_logger
 from deep_rl.utils.trainer_shell import trainer_learner
 from deep_rl.component.policy import SamplePolicy
-from deep_rl.component.task import ParallelizedTask, MiniGridFlatObs, MetaCTgraphFlatObs, ContinualWorld
-from deep_rl.network.network_heads import CategoricalActorCriticNet_SS, GaussianActorCriticNet_SS, CategoricalActorCriticNet_SS_Comp
-from deep_rl.network.network_bodies import FCBody_SS, DummyBody_CL, FCBody_SS_Comp
-from deep_rl.agent.PPO_agent import PPODetectShell, PPOShellAgent
+from deep_rl.component.task import ParallelizedTask, MetaCTgraphFlatObs
+from deep_rl.network.network_heads import CategoricalActorCriticNet_SS_Comp
+from deep_rl.network.network_bodies import DummyBody_CL, FCBody_SS_Comp
+from deep_rl.agent.PPO_agent import PPODetectShell
 
 from deep_rl.shell_modules.communication.comms import ParallelCommDetect
 from deep_rl.shell_modules.detect.detect import Detect
@@ -158,10 +151,6 @@ def detect_finalise_and_run(config, Agent):
     agent = Agent(config)
     config.agent_name = agent.__class__.__name__ + '_{0}'.format(args.curriculum_id)
 
-    # Communication frequency. TODO: This will need a rework if we don't know the length of task encounters.
-    #config.querying_frequency = (config.max_steps[0]/(config.rollout_length * config.num_workers)) / args.comm_interval     # This comes out to how many iterations between communication cycles
-
-
     ###############################################################################
     # Read the reference ip-port pairs to enter a collective. Setup the parallelised
     # communication module.
@@ -172,16 +161,6 @@ def detect_finalise_and_run(config, Agent):
         line = line.strip('\n').split(', ')
         addresses.append(line[0])
         ports.append(int(line[1]))
-
-        
-    # If True then run the omnisicent mode agent, otherwise run the traditional agent.
-    # TODO: Have to figure out how a traditional learner can transition to omniscient whenever required. Not really implemented yet and doesn't really work properly.
-    #if GLOBAL_mode.value:
-    #    comm = ParallelCommOmniscient(agent.get_task_emb_size(), agent.model_mask_dim, config, zip(addresses, ports), GLOBAL_task_record, GLOBAL_manager, args.localhost, GLOBAL_mode, args.dropout, config.emb_dist_threshold) #Chris added threshold
-    #    trainer_learner(agent, comm, args.curriculum_id, GLOBAL_manager, GLOBAL_task_record, config.querying_frequency, GLOBAL_mode)
-
-
-    
 
     # Log all system hyperparameters and settings to log directory
     config.log_hyperparameters(config.logger.log_dir + '/parameters.txt')
@@ -272,17 +251,13 @@ if __name__ == '__main__':
     parser.add_argument('--shell_config_path', help='shell config', default='./shell_configs/paper_experiments/ct28_2_dist_multi.json')                         # File path to your chosen shell.json configuration file. Changing the default here might save you some time.
     parser.add_argument('--exp_id', help='id of the experiment. useful for setting '\
         'up structured directory of experiment results/data', default='upz', type=str)                                  # Experiment ID. Can be useful for setting up directories for logging results/data.
-    parser.add_argument('--omni', '--o', '-o', help='launches agent in omniscient mode. omniscient agents use the '\
-        'gather all querying method to gather all knowledge from the network while still operating as a functional '\
-            'learning agent', action='store_true')                                                                      # Flag used to start the system in omniscient agent mode. By default the system will run in learning mode.
-                                                                                                                        # Omnisicient agent mode cannot be combined with evaluation mode.
 
     parser.add_argument('--localhost', '--ls', '-ls', help='used to run DMIU in localhost mode', action='store_true')   # Flag used to start the system using localhost instead of public IP. Can be useful for debugging network related problems.
     parser.add_argument('--shuffle', '--s', '-s', help='randomise the task curriculum', action='store_true')            # Not required. If you want to randomise the order of tasks in the curriculum then you can change to 1
     parser.add_argument('--comm_interval', '--ci', '-ci', help='integer value indicating the number of communications '\
         'to perform per task', type= int, default=20)                                                                   # Configures the communication interval used to test and take advantage of the lucky agent phenomenon. We found that a value of 5 works well. 
                                                                                                                         # Please do not modify this value unless you know what you're doing as it may cause unexpected results.
-
+    parser.add_argument('--omni', '--o', '-o', help='', action='store_true')
     parser.add_argument('--device', help='select device 1 for GPU or 0 for CPU. default is GPU', type=int, default=1)   # Used to select device. By default system will try to use the GPU. Currently PyTorch is only compatible with NVIDIA GPUs or Apple M Series processors.
     parser.add_argument('--reference', '--r', '-r', help='reference.csv file path', type=str, default='reference.csv')
     parser.add_argument('--dropout', '--d', '-d', help='Comunication dropout parameter', type=float, default=0.0)

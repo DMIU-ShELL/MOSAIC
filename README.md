@@ -1,25 +1,48 @@
-# MOSAIC
+# Collaborative Learning in Agentic Systems: A Collective AI is Greater Than the Sum of Its Parts (MOSAIC)
 
-**MOSAIC (Modular Sharing and Composition in Collective Learning)** is a decentralized, asynchronous, and collaborative reinforcement learning system that enables autonomous agents to identify, share, and reuse modular knowledge. It uses task similarity and reward-based heuristics to allow agents to independently select, learn and act in RL environments. MOSAIC improves learning speed, task generalization, and scalability without centralized coordination.
+This is code for the paper [Nath et. al 2025](tbd)
 
-This work is inspired and supported by the work conducted in [ShELL (Shared Experience Lifelong Learning)](https://rdcu.be/dB9zt).
+**MOSAIC (Modular Sharing and Composition in Collective Learning)** is a decentralized, agentic AI framework designed for large-scale, asynchronous reinforcement learning. In real-world settings where agents face diverse tasks, limited bandwidth, and no central controller, MOSAIC enables agents to autonomously share, select, and reuse knowledge across tasks and peers.
+
+By combining:
+- Modular policy composition via neural masks
+- Selection via cosine similarity computed from Wasserstein embeddings, and performance-based criteria
+- Asynchronous peer-to-peer communication
+
+MOSAIC improves sample efficiency, enables generalization to unsolvable tasks, and facilitates the emergence of curricula through collaboration, all without coordination or centralized control.
+
+This work is supported and inspired by the work conducted in [ShELL (Shared Experience Lifelong Learning)](https://sam.gov/opp/1afbf600f2e04b26941fad352c08d1f1/view) and [A Collective AI via Lifelong Learning and Sharing at the Edge](https://rdcu.be/dB9zt).
 
 ## Overview
-
-MOSAIC belongs to a novel paradigm of distributed AI systems where each agent is an independent learner capable of collaboration via sharing of knowledge. These agents communicate peer-to-peer, exchange task embeddings, and combine learned knowledge through modular neural masks guided by Wasserstein task similarity.
-
-### Key Features
-
-- Modular policy composition via neural masks.
-- Task similarity estimation using Wasserstein embeddings.
-- Asynchronous knowledge exchange guided by performance and similarity.
-- Full support for decentralized, scalable training across tasks and environments.
+The MOSAIC repository is structured as:
+```
+MOSAIC/
+├── CurriculumMinigrid/
+│   ├── curriculumMultiRoomEnv.py  # Custom MiniGrid environments
+│   └── curriculumMultiRoomMh.py   # Custom MiniHack environments
+├── deep_rl/
+│   ├── agents/                    # Agent architectures (PPO)
+│   ├── component/                 # Core components
+│   ├── network/                   # Networks and ActorCritic architectures
+│   ├── shell_modules/             # MOSAIC modules (comm, detect, ssmask_utils)
+│   └── utils/                     # Utilities and core training loop
+├── env_configs/                   # Environment details
+├── RAWDATA/                       # Raw performance data for the paper
+├── shell_configs/                 # Curriculum configuration
+├── ymls/                          # Environment setup YAMLs
+├── launcher.py                    # Orchestrates multi-agent runs
+├── reference.csv                  # (IP, Port) entry points for agents
+├── run_mctgraph.py                # Entry point for single agent on CT-graph
+├── run_minigrid.py                # Entry point for single agent on MiniGrid
+└── run_minihack.py                # Entry point for single agent on MiniHack
+```
 
 ## Agent Architecture
 
 Each agent in MOSAIC:
 - Utilizes [PPO (Proximal Policy Optimization)](https://arxiv.org/abs/1707.06347) for reinforcement learning.
-- Implements [Modulating Masks](https://arxiv.org/abs/2212.11110) to represent and isolate task-specific knowledge.
+- Extends [Modulating Masks](https://arxiv.org/abs/2212.11110) to represent and isolate task-specific knowledge.
+- Extends [Wasserstein Task Embeddings](https://arxiv.org/abs/2208.11726) to compute online task embeeddings in RL.
 - Dynamically selects and blends external knowledge from peer agents via a two-phase heuristic protocol (similarity + performance).
 
 Baseline agents are PPO-only and prone to catastrophic forgetting.
@@ -28,7 +51,7 @@ Baseline agents are PPO-only and prone to catastrophic forgetting.
 
 - [MiniGrid](https://github.com/Farama-Foundation/gym-minigrid)
 - [CT-graph](https://github.com/soltoggio/CT-graph)
-- [Procgen](https://github.com/openai/procgen)
+- [MiniHack](https://github.com/facebookresearch/minihack)
 
 ## Requirements
 
@@ -42,7 +65,9 @@ Baseline agents are PPO-only and prone to catastrophic forgetting.
 ## Usage
 
 ### Run a Single Agent
-To run a single C3L agent on Minigrid.
+All seeds used in the paper can be found in `README_seeds.md`
+
+To run a single MOSAIC agent on Minigrid.
 
 ```
 python run_minigrid.py <curriculum index> <port> -p <experiment name>
@@ -52,7 +77,7 @@ python run_minigrid.py <curriculum index> <port> -p <experiment name>
 - The -p argument is optional and will default to the environment name.
 
 
-CT-graph and MiniHack experiments can be run using run_mctgraph.py and run_procgen.py
+CT-graph and MiniHack experiments can be run using run_mctgraph.py and run_minihack.py
 
 ### Run a distributed experiment
 To run a multi-agent experiment with multiple agents, each with their own environment.
@@ -95,19 +120,6 @@ Device 2:
 python run_minigrid.py 1 29501
 ```
 
-Additional parameters are also available in the system
-```
---num_agents: Modify the default value of the initial world size (default starts at 1)
---shell_config_path: Modify the default path to the shell configuration JSON.
---exp_id: A unique ID/name for an experiment. Can be useful to seperate logging
---eval: Launches in evaluation mode
---localhost: Launches in localhost mode. Can be useful for debugging
---shuffle: Randomly shuffles the curriculum from the shell.json configuration. Can be useful for testing.
---comm_interval: An integer value to indicate the number of communications to perform per task.
---device: An integer value to indicate the device selection. By default it will select the GPU if available. Otherwise a value of 0 will indicate CPU.
---reference: The file path to the .csv file containing the address table of bootstrapping agents. These are the addresses the agent will use to connect to an existing network, or form a new one.
-```
-
 ### Configuring environments/curriculum
 Curriculums and environments can be modified from the shell.json files in shell_configs/. This file contains the curriculum for each agent. Per-environment specifications can be found in env_configs/.
 
@@ -117,7 +129,13 @@ The repository is currently developed and maintained by researchers from Loughbo
 ## Bug Reporting
 If you encounter any bugs using the code or have any questions, please raise an issue in the repository on GitHub.
 
-## Acknowledgement
-This material is based upon work supported by the United States Air Force Research Laboratory (AFRL) and Defense Advanced Research Projects Agency (DARPA) under Contract No. HR00112190132.
+## BibTex
+To cite this work, please use the information below.
+```
+TBD
+```
 
-Any opinions, findings and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the United States Air Force Research Laboratory (AFRL) and Defense Advanced Research Projects Agency (DARPA).
+## Acknowledgements
+This material is based upon work supported by the Defense Advanced Research Projects Agency (DARPA) under contract No. HR001121901 (Shared Experience Lifelong Learning) and the Industrial Robots-as-a-Service (IRaaS) project funded by the EPSRC (EP/V050966/1).
+
+Any opinions, findings and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Defense Advanced Research Projects Agency (DARPA).
