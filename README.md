@@ -1,7 +1,7 @@
 # Collaborative Learning in Agentic Systems: A Collective AI is Greater Than the Sum of Its Parts (MOSAIC)
 
 [![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![arXiv](https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg)](https://www.arxiv.org/abs/2506.05577)
 
 ![MOSAIC Diagram](assets/MOSAIC_MAIN_COMBINEDv3.png)
