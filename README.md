@@ -1,6 +1,12 @@
 # Collaborative Learning in Agentic Systems: A Collective AI is Greater Than the Sum of Its Parts (MOSAIC)
 
-This is code for the paper [Nath et. al 2025](tbd)
+**[Link to Paper: arXiv/Nature]** | **[Link to Project Website/Lab Page]**
+[![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![arXiv](https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg)](https://www.arxiv.org/abs/2506.05577)
+<p align="center">
+  <img src="assets/MOSAIC MAIN COMBINEDv3.pdf" alt="MOSAIC Pipeline" width="700"/>
+</p>
 
 **MOSAIC (Modular Sharing and Composition in Collective Learning)** is a decentralized, agentic AI framework designed for large-scale, asynchronous reinforcement learning. In real-world settings where agents face diverse tasks, limited bandwidth, and no central controller, MOSAIC enables agents to autonomously share, select, and reuse knowledge across tasks and peers.
 
