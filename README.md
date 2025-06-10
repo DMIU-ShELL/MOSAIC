@@ -136,7 +136,15 @@ If you encounter any bugs using the code or have any questions, please raise an 
 ## BibTex
 To cite this work, please use the information below.
 ```
-TBD
+@misc{nath2025collaborativelearningagenticsystems,
+      title={Collaborative Learning in Agentic Systems: A Collective AI is Greater Than the Sum of Its Parts}, 
+      author={Saptarshi Nath and Christos Peridis and Eseoghene Benjamin and Xinran Liu and Soheil Kolouri and Peter Kinnell and Zexin Li and Cong Liu and Shirin Dora and Andrea Soltoggio},
+      year={2025},
+      eprint={2506.05577},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2506.05577}, 
+}
 ```
 
 ## Acknowledgements
