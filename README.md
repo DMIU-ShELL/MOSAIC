@@ -67,6 +67,7 @@ Baseline agents are PPO-only and prone to catastrophic forgetting.
 - Environment setup YAMLs are located in `./ymls/`
 
 ## Usage
+MOSAIC is designed to run a single agent per execution. The launcher.py file enables quick and easy concurrent execution of many agents. We recommend the use of a single device per agent, or a GPU server machine. If Multi Instance GPU is available, it is strongly recommend enabling. MIGs were used on NVIDIA A100 GPUs for the experiments in this study. 
 
 ### Run a Single Agent
 All seeds used in the paper can be found in `README_seeds.md`
