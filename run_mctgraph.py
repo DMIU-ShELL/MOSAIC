@@ -46,7 +46,7 @@ def global_config(config, name):
     config.discount = 0.99
     config.use_gae = True
     config.gae_tau = 0.99
-    config.entropy_weight = 0.00015 #0.75
+    config.entropy_weight = 0.01 #0.75
     config.rollout_length = 512
     config.optimization_epochs = 8
     config.num_mini_batches = 64
