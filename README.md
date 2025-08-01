@@ -4,7 +4,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![arXiv](https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg)](https://www.arxiv.org/abs/2506.05577)
 
-![MOSAIC Diagram](assets/MOSAIC_MAIN_COMBINEDv3.png)
+![MOSAIC Diagram](assets/MOSAIC_MAIN_COMBINED.png)
 
 **MOSAIC (Modular Sharing and Composition in Collective Learning)** is a decentralized, agentic AI framework designed for large-scale, asynchronous reinforcement learning. In real-world settings where agents face diverse tasks, limited bandwidth, and no central controller, MOSAIC enables agents to autonomously share, select, and reuse knowledge across tasks and peers.
 
