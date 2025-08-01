@@ -468,7 +468,7 @@ class ParallelCommDetect(object):
                 # Time to pick the best agents
                 if len(self.metadata) > 0:
                     # Sort metadata
-                    meta_copy = sorted(self.metadata, key=lambda d: (-d['sender_similarity'], d['sender_reward']))
+                    meta_copy = sorted(self.metadata, key=lambda d: (-d['sender_similarity'], -d['sender_reward']))
                     #meta_copy = sorted(self.metadata, key=lambda d: (d['sender_reward'], -d['sender_similarity']))
 
                     # Log sorted metadata at each point in time
