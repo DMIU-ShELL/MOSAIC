@@ -2,7 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![arXiv](https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg)](https://www.arxiv.org/abs/2506.05577)
+[![arXiv](https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg)](https://arxiv.org/abs/2506.05577)
 
 ![MOSAIC Diagram](assets/MOSAIC_MAIN_COMBINED.png)
 > Figure 1: High-level illustration of the main MOSAIC algorithmic steps. (A) A Wasserstein task embedding vτ is computed from a SAR batch by Agent A0 (representing any agent in the collective). (B) Periodically, the agent A0 broadcasts a task embedding query (TEQ) to all known peers. (C) Peers send back a query response (QR) that contains their task’s vτ , r, and the corresponding mask ID; (D) Agent A0 selects relevant embeddings using cosine similarity on the Wasserstein embeddings. (E) A0 further selects relevant embeddings using Criterion 1 and Criterion 2. (F) A0 sends mark requests (MR). (G) The contacted agents respond by sending the requested mask through a mask transfer (MTR). (H) Incoming masks from A2 and A3 are incorporated into A0. The training of the agent’s policy occurs in parallel (not represented in the figure).
