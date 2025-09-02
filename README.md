@@ -138,8 +138,8 @@ Please raise an issue if you encounter any bugs, issues or have any questions.
 ## BibTex
 To cite this work, please use the information below.
 ```
-@misc{nath2025collaborativelearningagenticsystems,
-      title={Collaborative Learning in Agentic Systems: A Collective AI is Greater Than the Sum of Its Parts}, 
+@misc{nath2025policysearchretrievalcomposition,
+      title={Policy Search, Retrieval, and Composition via Task Similarity in Collaborative Agentic Systems}, 
       author={Saptarshi Nath and Christos Peridis and Eseoghene Benjamin and Xinran Liu and Soheil Kolouri and Peter Kinnell and Zexin Li and Cong Liu and Shirin Dora and Andrea Soltoggio},
       year={2025},
       eprint={2506.05577},
