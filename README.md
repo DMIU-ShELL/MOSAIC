@@ -1,4 +1,4 @@
-# Collaborative Learning in Agentic Systems: A Collective AI is Greater Than the Sum of Its Parts (MOSAIC)
+# Policy Search, Retrieval, and Composition via Task Similarity in Collaborative Agentic Systems
 
 [![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
