@@ -133,7 +133,7 @@ Curriculums and environments can be modified from the shell.json files in shell_
 The repository is currently developed and maintained by researchers from Loughborough University, Vanderbilt University, UC Riverside, and UT Dallas
 
 ## Bug Reporting
-If you encounter any bugs using the code or have any questions, please raise an issue in the repository on GitHub.
+Please raise an issue if you encounter any bugs, issues or have any questions.
 
 ## BibTex
 To cite this work, please use the information below.
