@@ -367,7 +367,6 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
         logger.info(Fore.RED + 'GLOBAL REGISTRY (seen_tasks dict)')
         for key, val in agent.seen_tasks.items(): logger.info(f"{key} --> embedding: {val['task_emb']}, reward: {val['reward']}, ground truth task id: {np.argmax(val['ground_truth'], axis=0)}, label length: {len(val['ground_truth'])}")
         for key, val in agent.seen_tasks.items(): logger.info(f"{key} --> reward: {val['reward']}, ground truth task id: {np.argmax(val['ground_truth'], axis=0)}, label length: {len(val['ground_truth'])}")
-        #logger.info(f'{Fore.BLUE}----------------------- Text logging complete in {time.time() - start_time} seconds -----------------------\n')
 
 
         ###############################################################################
@@ -387,8 +386,6 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
             dict_to_report['eval'] = True
             dict_to_report['parameters'] = None
             queue_label.put(dict_to_report)
-
-        #logger.info(f'{Fore.BLUE}----------------------- Communication querying complete in {time.time() - start_time} seconds -----------------------\n')
 
 
         
@@ -414,7 +411,6 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
 
         # Log the beta parameters for the curren task
         agent.log_betas(shell_iterations)
-        #logger.info(f'{Fore.BLUE}----------------------- Iteration function complete in {time.time() - start_time} seconds -----------------------\n')
 
         
         ###############################################################################
@@ -433,84 +429,8 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
             emd = dist_arr[5]
             w_dist = dist_arr[6]
             #reduced_emb_dist = dist_arr[7]
-
-            # Log euclidean distance with moving average on current embedding
-            '''data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(emb_dist)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(emb_dist_log, mode='a', header=not pd.io.common.file_exists(emb_dist_log), index=False)
-
-            # Log mahalanobis distance with moving average with identity covariance matrix
-            data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(m_dist1)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(m_dist_log1, mode='a', header=not pd.io.common.file_exists(m_dist_log1), index=False)
-
-            # Log mahalanobis distance with moving average with mean covariance matrix
-            data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(m_dist2)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(m_dist_log2, mode='a', header=not pd.io.common.file_exists(m_dist_log2), index=False)
-
-            # Log cosine similarity with moving average
-            data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(cos_sim)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(cossim_log, mode='a', header=not pd.io.common.file_exists(cossim_log), index=False)
-
-            # Kernel density with moving average
-            data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(density)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(density_log, mode='a', header=not pd.io.common.file_exists(density_log), index=False)
-
-            # Wasserstein distance / Earth Mover's Distance
-            data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(emd)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(emd_log, mode='a', header=not pd.io.common.file_exists(emd_log), index=False)
-
-            # Wasserstein distance reference
-            data = [
-                {
-                    'iteration': shell_iterations,
-                    'distance' : float(w_dist)    # convert from tensor to float
-                }
-            ]
-            df = pd.DataFrame(data)
-            df.to_csv(wdist_log, mode='a', header=not pd.io.common.file_exists(wdist_log), index=False)'''
             
             if task_change_flag:
-                #logger.info(Fore.YELLOW + f'TASK CHANGE DETECTED! NEW MASK CREATED. CURRENT TASK INDEX: {agent.current_task_key}')
-            
-                #log_string = f'Time: {time.time()}, Iteration: {shell_iterations}, Num samples for detection: {agent.detect.get_num_samples()}, Task change flag: {task_change_flag}, New embedding: {new_emb}, Ground truth label: {ground_truth_task_label}, Current embedding: {agent.current_task_emb}, Threshold: {_dist_threshold}, Distance: {emb_dist}, Embedding similarity: {emb_bool}, Agent seen tasks: {agent_seen_tasks}'
-                #detect_module_activations.append([log_string])
-                #np.savetxt(logger.log_dir + '/detect_activations_{0}.csv'.format(agent_id), detect_module_activations, delimiter=',', fmt='%s')
-
                 data = [
                     {
                         'Iteration': shell_iterations,
@@ -539,21 +459,8 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                 
                 # Convert one-hot label to integer
                 _label = torch.argmax(_label_one_hot).item()
-
-                #_embeddings.append(new_emb)
-                #_labels.append(_label)
-
-                #logger.info(Fore.WHITE + f'Embedding: {new_emb}')
-                #logger.info(f'Task ID: {_label}')
-                #logger.info(f'Distance: {emb_dist}')
-                #logger.info(f'Threshold: {agent.emb_dist_threshold}')
-                #emb_t = torch.stack(tuple(_embeddings))
-                #l_t = torch.stack(tuple(_labels))
-                #tb_writer_emb.add_embedding(emb_t, metadata=_labels, global_step=shell_iterations)
             
             del task_change_flag, new_emb, ground_truth_task_label, dist_arr, emb_bool, agent_seen_tasks
-        
-        #logger.info(f'{Fore.BLUE}----------------------- Run detect method complete in {time.time() - start_time} seconds -----------------------\n')
         
         ###############################################################################
         ### Logs metrics to tensorboard log file and updates the embedding, reward pair in this cycle for a particular task.
@@ -562,10 +469,6 @@ def trainer_learner(agent, comm, agent_id, manager, mask_interval, mode):
                 
             # Save agent model
             agent.save(agent.config.log_dir + '/%s-%s-model-%s.bin' % (agent.config.agent_name, agent.config.tag, agent.task.name))
-        
-        #logger.info(f'{Fore.BLUE}----------------------- Iteration logging complete in {time.time() - start_time} seconds -----------------------\n')
-
-
         
         ###############################################################################
         ### Environment task change at the end of the max steps for each task. Agent is not aware of this change and must detect it using the detect module.
